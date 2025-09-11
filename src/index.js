@@ -1,23 +1,40 @@
 const express = require('express');
+const { PrismaClient } = require('@prisma/client');
+require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const prisma = new PrismaClient();
+const PORT = process.env.PORT || 3000;
 
-// Middleware para parsear JSON
+// Middleware
 app.use(express.json());
 
 // Ruta básica
 app.get('/', (req, res) => {
-  res.json({ message: '¡API funcionando!' });
+  res.json({ message: 'Si te vas a /api/users, vas a poder ver un usuario obviamente imaginario. La nota me dirá si te parece piola.' });
 });
 
-// Rutas de usuarios (datos falsos por ahora)
-app.get('/api/users', (req, res) => {
-  const users = [
-    { id: 1, name: 'Juan', email: 'juan@email.com' },
-    { id: 2, name: 'María', email: 'maria@email.com' }
-  ];
-  res.json({ users });
+// Obtener todos los usuarios
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany();
+    res.json({ users });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear usuario
+app.post('/api/users', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const user = await prisma.user.create({
+      data: { name, email, password }
+    });
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.listen(PORT, () => {
