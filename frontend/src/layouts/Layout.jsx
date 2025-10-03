@@ -1,14 +1,35 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function Layout({ children }) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div>
       <nav style={navStyle}>
-        <h2>Twitter Clone</h2>
+        <h2>Etex</h2>
         <div style={linksStyle}>
           <Link to="/" style={linkStyle}>Feed</Link>
-          <Link to="/login" style={linkStyle}>Login</Link>
-          <Link to="/register" style={linkStyle}>Register</Link>
+          
+          {isAuthenticated() ? (
+            <>
+              <span style={userStyle}>Hola, {user?.name}</span>
+              <button onClick={handleLogout} style={logoutButtonStyle}>
+                Cerrar Sesión
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" style={linkStyle}>Login</Link>
+              <Link to="/register" style={linkStyle}>Register</Link>
+            </>
+          )}
         </div>
       </nav>
       
@@ -30,7 +51,8 @@ const navStyle = {
 
 const linksStyle = {
   display: 'flex',
-  gap: '1rem'
+  gap: '1rem',
+  alignItems: 'center'
 };
 
 const linkStyle = {
@@ -38,6 +60,20 @@ const linkStyle = {
   textDecoration: 'none',
   padding: '0.5rem 1rem',
   borderRadius: '4px'
+};
+
+const userStyle = {
+  color: 'white',
+  fontWeight: 'bold'
+};
+
+const logoutButtonStyle = {
+  padding: '0.5rem 1rem',
+  backgroundColor: '#e74c3c',
+  color: 'white',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer'
 };
 
 const mainStyle = {
