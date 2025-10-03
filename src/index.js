@@ -1,5 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const cors = require('cors');
 require('dotenv').config();
 
 // Importar todas las rutas
@@ -12,6 +13,10 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(cors({
+  origin: 'http://localhost:5173', // URL del frontend
+  credentials: true
+}));
 app.use(express.json());
 
 // Ruta básica

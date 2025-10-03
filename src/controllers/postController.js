@@ -4,12 +4,11 @@ const prisma = new PrismaClient();
 // Crear un nuevo post
 const createPost = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const {content } = req.body;
     const authorId = req.user.userId; // Del middleware de autenticación
 
     const post = await prisma.post.create({
       data: {
-        title,
         content,
         authorId
       },
