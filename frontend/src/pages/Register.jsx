@@ -20,23 +20,28 @@ function Register() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
 
-    try {
-      const response = await authAPI.register(formData);
-      console.log('Registro exitoso:', response.data);
-      
-      // Redirigir al login después de registro exitoso
-      navigate('/login');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Error al registrarse');
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Validar dominio del email antes de enviar
+  if (!formData.email.endsWith('@alumno.etec.um.edu.ar' || '@etec.um.edu.ar')) {
+    setError('Solo se permiten registros con emails @etec.um.edu.ar');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const response = await authAPI.register(formData);
+    console.log('Registro exitoso:', response.data);
+    navigate('/login');
+  } catch (err) {
+    setError(err.response?.data?.error || 'Error al registrarse');
+    console.error('Error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={containerStyle}>
