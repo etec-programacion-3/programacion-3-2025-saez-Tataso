@@ -3,12 +3,19 @@ const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
-const JWT_SECRET = '277353'; // En producción, esto va en .env
+const JWT_SECRET = 'tu-clave-secreta-super-segura';
 
-// El register para los usuarios
+// Registrar usuario
 const register = async (req, res) => {
   try {
     const { email, name, password } = req.body;
+
+    // Validar dominio del email
+    if (!email.endsWith('@alumno.etec.um.edu.ar'|| '@etec.um.edu.ar')) {
+      return res.status(400).json({ 
+        error: 'Solo se permiten registros con emails de la Etec' 
+      });
+    }
 
     // Verificar que el email no existe
     const existingUser = await prisma.user.findUnique({
@@ -16,7 +23,7 @@ const register = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'Este email ya está registrado' });
+      return res.status(400).json({ error: 'El email ya está registrado' });
     }
 
     // Hashear contraseña
@@ -35,7 +42,7 @@ const register = async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '2h' }
+      { expiresIn: '24h' }
     );
 
     res.status(201).json({
@@ -74,7 +81,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '2h' }
+      { expiresIn: '24h' }
     );
 
     res.json({
