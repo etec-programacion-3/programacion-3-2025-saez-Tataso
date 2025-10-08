@@ -66,12 +66,7 @@ function Feed() {
       
       <CreatePost onPostCreated={handlePostCreated} />
       
-      {posts.length === 0 ? (
-        <div style={emptyStateStyle}>
-          <p>📭 No hay publicaciones aún</p>
-          <p style={emptySubtextStyle}>¡Sé el primero en publicar algo!</p>
-        </div>
-      ) : (
+      
         <div>
           {posts.map(post => (
             <Post 
@@ -81,7 +76,7 @@ function Feed() {
             />
           ))}
         </div>
-      )}
+      
     </div>
   );
 }
