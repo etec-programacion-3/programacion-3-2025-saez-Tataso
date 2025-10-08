@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { postsAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import CreatePost from '../components/CreatePost';
+import Post from '../components/Post';
 
 function Feed() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { user } = useAuth();
 
   useEffect(() => {
     loadPosts();
@@ -15,8 +14,10 @@ function Feed() {
 
   const loadPosts = async () => {
     try {
+      setLoading(true);
       const response = await postsAPI.getAll();
       setPosts(response.data.posts);
+      setError('');
     } catch (err) {
       setError('Error al cargar publicaciones');
       console.error(err);
@@ -30,10 +31,6 @@ function Feed() {
   };
 
   const handleDelete = async (postId) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta publicación?')) {
-      return;
-    }
-
     try {
       await postsAPI.delete(postId);
       setPosts(posts.filter(post => post.id !== postId));
@@ -43,40 +40,45 @@ function Feed() {
     }
   };
 
-  if (loading) return <div>Cargando publicaciones...</div>;
-  if (error) return <div style={errorStyle}>{error}</div>;
+  if (loading) {
+    return (
+      <div style={loadingContainerStyle}>
+        <div style={spinnerStyle}>⏳</div>
+        <p>Cargando publicaciones...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={errorContainerStyle}>
+        <p>{error}</p>
+        <button onClick={loadPosts} style={retryButtonStyle}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1>Feed de Publicaciones</h1>
+    <div style={containerStyle}>
+      <h1 style={titleStyle}>Feed de Publicaciones</h1>
       
       <CreatePost onPostCreated={handlePostCreated} />
       
       {posts.length === 0 ? (
-        <p>No hay publicaciones aún. ¡Sé el primero en publicar!</p>
+        <div style={emptyStateStyle}>
+          <p>📭 No hay publicaciones aún</p>
+          <p style={emptySubtextStyle}>¡Sé el primero en publicar algo!</p>
+        </div>
       ) : (
-        <div style={postsContainerStyle}>
+        <div>
           {posts.map(post => (
-            <div key={post.id} style={postCardStyle}>
-              <div style={postHeaderStyle}>
-                <strong>{post.author.name}</strong>
-                <span style={dateStyle}>
-                  {new Date(post.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              
-              <h3>{post.title}</h3>
-              <p>{post.content}</p>
-              
-              {user.id === post.authorId && (
-                <button 
-                  onClick={() => handleDelete(post.id)}
-                  style={deleteButtonStyle}
-                >
-                  Eliminar
-                </button>
-              )}
-            </div>
+            <Post 
+              key={post.id} 
+              post={post} 
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
@@ -84,49 +86,58 @@ function Feed() {
   );
 }
 
-// Estilos
-const errorStyle = {
-  padding: '1rem',
-  backgroundColor: '#fee',
-  color: '#c00',
-  borderRadius: '4px'
+const containerStyle = {
+  maxWidth: '600px',
+  margin: '0 auto'
 };
 
-const postsContainerStyle = {
+const titleStyle = {
+  fontSize: '1.5rem',
+  marginBottom: '1.5rem',
+  color: '#14171a'
+};
+
+const loadingContainerStyle = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem',
-  marginTop: '1rem'
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '3rem',
+  color: '#657786'
 };
 
-const postCardStyle = {
-  padding: '1.5rem',
-  border: '1px solid #ddd',
-  borderRadius: '8px',
-  backgroundColor: '#fff'
+const spinnerStyle = {
+  fontSize: '3rem',
+  animation: 'spin 1s linear infinite'
 };
 
-const postHeaderStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  marginBottom: '1rem',
-  paddingBottom: '0.5rem',
-  borderBottom: '1px solid #eee'
+const errorContainerStyle = {
+  padding: '2rem',
+  textAlign: 'center',
+  backgroundColor: '#fee',
+  color: '#c00',
+  borderRadius: '8px'
 };
 
-const dateStyle = {
-  color: '#999',
-  fontSize: '0.9rem'
-};
-
-const deleteButtonStyle = {
+const retryButtonStyle = {
   marginTop: '1rem',
   padding: '0.5rem 1rem',
-  backgroundColor: '#e74c3c',
+  backgroundColor: '#1da1f2',
   color: 'white',
   border: 'none',
   borderRadius: '4px',
   cursor: 'pointer'
+};
+
+const emptyStateStyle = {
+  textAlign: 'center',
+  padding: '3rem',
+  color: '#657786'
+};
+
+const emptySubtextStyle = {
+  fontSize: '0.875rem',
+  marginTop: '0.5rem'
 };
 
 export default Feed;
