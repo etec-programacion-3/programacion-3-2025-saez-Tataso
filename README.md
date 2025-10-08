@@ -1,2 +1,2 @@
 # programacion-3-2025-saez-Tataso
-Ésto después de instalar las dependencias (Node.js y PostgreSQL instalado y corriendo), en el caso de que no te ande, podes leer el dependencies.txt y ves si por muy mala leche no tenes.
+Para correr esto después de instalar las dependencias (lo que está en el dependencies.txt), vas a necesitar dos terminales, una corriendo "npm run dev" en la carpeta en la que estás leyendo esto (para el backend). Luego, en la otra terminal, irse a /frontend ("cd frontend/" desde ésta carpeta) y correr el mismo comando.
