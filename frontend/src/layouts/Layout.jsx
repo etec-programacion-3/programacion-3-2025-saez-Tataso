@@ -13,7 +13,7 @@ function Layout({ children }) {
   return (
     <div>
       <nav style={navStyle}>
-        <h2>Etex</h2>
+        <h2>Twitetec</h2>
         <div style={linksStyle}>
           <Link to="/" style={linkStyle}>Feed</Link>
           

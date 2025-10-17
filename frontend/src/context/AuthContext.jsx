@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode'; // Importación correcta
 
 const AuthContext = createContext();
 
@@ -7,14 +8,34 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Al cargar, verificar si hay token guardado
+  // Función para verificar si el token expiró
+  const isTokenExpired = (savedToken) => {
+    if (!savedToken) return true;
+    try {
+      const decodedToken = jwtDecode(savedToken);
+      const currentTime = Date.now() / 1000;
+      return decodedToken.exp < currentTime;
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return true;
+    }
+  };
+
+  // Al cargar, verificar si hay token guardado y si es válido
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
     
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      // Verificar si el token no expiró
+      if (!isTokenExpired(savedToken)) {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } else {
+        // Token expirado, limpiar
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
@@ -34,17 +55,25 @@ export function AuthProvider({ children }) {
   };
 
   const isAuthenticated = () => {
-    return !!token;
+    if (!token) return false;
+    // Verificar que el token no haya expirado
+    return !isTokenExpired(token);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      logout, 
+      isAuthenticated, 
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook personalizado para usar el contexto
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
