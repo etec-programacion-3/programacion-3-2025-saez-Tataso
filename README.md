@@ -4,9 +4,10 @@ Complete social media platform built with Node.js, Express, React, PostgreSQL, a
 
 ## Quick Start (Arch Linux / WSL)
 
+
 ```bash
 # 1. Clone repository
-git clone <repository-url>
+git clone https://github.com/etec-programacion-3/programacion-3-2025-saez-Tataso.git
 cd programacion-3-2025-saez-Tataso
 
 # 2. Run automated setup
