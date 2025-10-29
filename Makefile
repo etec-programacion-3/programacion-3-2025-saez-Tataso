@@ -67,6 +67,8 @@ install: ## Install all dependencies (backend + frontend + Prisma)
 install-backend: ## Install backend dependencies only
 	@echo "$(COLOR_YELLOW)Installing backend dependencies...$(COLOR_RESET)"
 	@cd $(BACKEND_DIR) && npm install
+	@cd $(BACKEND_DIR) && npm install cors morgan body-parser cookie-parser bcryptjs --save
+	@cd $(BACKEND_DIR) && npm install bcryptjs @prisma/client jsonwebtoken dotenv --save
 	@echo "$(COLOR_GREEN)✓ Backend dependencies installed$(COLOR_RESET)"
 
 install-frontend: ## Install frontend dependencies only
