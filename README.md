@@ -70,7 +70,7 @@ Before installing, ensure you have the following installed on your system:
 
 ```bash
 # Update system
-sudo pacman -Syu
+sudo pacman -Syyu
 
 # Install all required packages
 sudo pacman -S nodejs npm postgresql git make base-devel lsof tmux
@@ -639,3 +639,7 @@ make dev-frontend # Terminal 2
 ## License
 
 This project is for educational purposes as part of Programación 3 course at ETEC.
+
+## Contact
+
+For questions or support, please contact the development team or open an issue in the repository.
