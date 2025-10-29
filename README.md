@@ -70,7 +70,7 @@ Before installing, ensure you have the following installed on your system:
 
 ```bash
 # Update system
-sudo pacman -Syu
+sudo pacman -Syyu
 
 # Install all required packages
 sudo pacman -S nodejs npm postgresql git make base-devel lsof tmux
