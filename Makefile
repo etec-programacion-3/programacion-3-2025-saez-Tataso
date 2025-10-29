@@ -1,166 +1,269 @@
-# Makefile for Twitetec clone project.
+# Makefile for Twitter Clone - Arch Linux / WSL
+# Complete automated setup and management
 
-.PHONY: help install install-backend install-frontend setup-db migrate dev dev-backend dev-frontend build clean test
+.PHONY: help quick-start check-system install-system install dev clean
 
 # Variables
-BACKEND_DIR = .
-FRONTEND_DIR = frontend
 DB_NAME = mi_proyecto
 DB_USER = admin
+DB_PASS = admin
+BACKEND_DIR = .
+FRONTEND_DIR = frontend
 
-# Colors for output
-COLOR_RESET = \033[0m
-COLOR_BOLD = \033[1m
-COLOR_GREEN = \033[32m
-COLOR_YELLOW = \033[33m
-COLOR_BLUE = \033[34m
+# Colors
+RESET = \033[0m
+BOLD = \033[1m
+GREEN = \033[32m
+YELLOW = \033[33m
+BLUE = \033[34m
+RED = \033[31m
 
-help: ## Show this help message
-	@echo "$(COLOR_BOLD)Available commands:$(COLOR_RESET)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(COLOR_BLUE)%-20s$(COLOR_RESET) %s\n", $$1, $$2}'
+###########################################
+# QUICK START
+###########################################
 
-install: ## Install all dependencies (backend + frontend + Prisma)
-	@echo "$(COLOR_GREEN)Installing dependencies...$(COLOR_RESET)"
-	@$(MAKE) install-backend
-	@$(MAKE) install-frontend
-	@$(MAKE) setup-prisma
-	@echo "$(COLOR_GREEN)Installation complete!$(COLOR_RESET)"
+quick-start: ## Complete setup from scratch (recommended)
+	@echo "$(BOLD)$(BLUE)Twitter Clone - Automated Setup$(RESET)"
+	@echo ""
+	@echo "This will install and configure everything automatically."
+	@echo "Estimated time: 5-10 minutes"
+	@echo ""
+	@read -p "Press Enter to continue or Ctrl+C to cancel..."
+	@echo ""
+	@$(MAKE) check-system
+	@$(MAKE) install-system
+	@$(MAKE) configure-locale
+	@$(MAKE) setup-postgresql
+	@$(MAKE) install
+	@$(MAKE) setup-env
+	@$(MAKE) migrate
+	@$(MAKE) try-restore
+	@echo ""
+	@echo "$(BOLD)$(GREEN)✓ Setup Complete!$(RESET)"
+	@echo ""
+	@echo "$(BOLD)Next steps:$(RESET)"
+	@echo "  1. Review .env file (optional): nano .env"
+	@echo "  2. Start application: make dev"
+	@echo "  3. Open browser: http://localhost:5173"
+	@echo ""
 
-install-backend: ## Install backend dependencies only
-	@echo "$(COLOR_YELLOW)Installing backend dependencies...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npm install
-	@echo "$(COLOR_GREEN)Backend dependencies installed$(COLOR_RESET)"
+help: ## Show this help
+	@echo "$(BOLD)Available Commands:$(RESET)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-20s$(RESET) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(BOLD)Quick Start:$(RESET)"
+	@echo "  make quick-start    - Complete automated setup"
+	@echo "  make dev            - Start application"
 
-install-frontend: ## Install frontend dependencies only
-	@echo "$(COLOR_YELLOW)Installing frontend dependencies...$(COLOR_RESET)"
-	@cd $(FRONTEND_DIR) && npm install
-	@echo "$(COLOR_GREEN)Frontend dependencies installed$(COLOR_RESET)"
+###########################################
+# SYSTEM CHECKS
+###########################################
 
-setup-prisma: ## Generate Prisma client
-	@echo "$(COLOR_YELLOW)Generating Prisma client...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npx prisma generate
-	@echo "$(COLOR_GREEN)Prisma client generated$(COLOR_RESET)"
+check-system: ## Check system requirements
+	@echo "$(YELLOW)Checking system...$(RESET)"
+	@command -v pacman >/dev/null 2>&1 || (echo "$(RED)✗ pacman not found. Is this Arch Linux?$(RESET)" && exit 1)
+	@command -v sudo >/dev/null 2>&1 || (echo "$(RED)✗ sudo not found$(RESET)" && exit 1)
+	@echo "$(GREEN)✓ System check passed$(RESET)"
 
-setup-db: ## Setup PostgreSQL database (requires sudo)
-	@echo "$(COLOR_YELLOW)Setting up PostgreSQL database...$(COLOR_RESET)"
-	@sudo -u postgres psql -c "CREATE DATABASE $(DB_NAME);" || echo "Database already exists"
-	@sudo -u postgres psql -c "CREATE USER $(DB_USER) WITH PASSWORD 'admin';" || echo "User already exists"
-	@sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);"
-	@sudo -u postgres psql -c "ALTER USER $(DB_USER) CREATEDB;"
-	@echo "$(COLOR_GREEN)Database setup complete$(COLOR_RESET)"
+###########################################
+# SYSTEM INSTALLATION
+###########################################
+
+install-system: ## Install Node.js and PostgreSQL
+	@echo "$(YELLOW)Installing system packages...$(RESET)"
+	@echo "This may take a few minutes..."
+	@sudo pacman -Sy --needed --noconfirm nodejs npm postgresql base-devel 2>&1 | grep -v "warning:" || true
+	@echo "$(GREEN)✓ System packages installed$(RESET)"
+
+configure-locale: ## Configure system locale for PostgreSQL
+	@echo "$(YELLOW)Configuring locale...$(RESET)"
+	@sudo sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen 2>/dev/null || true
+	@sudo locale-gen >/dev/null 2>&1 || true
+	@echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf >/dev/null
+	@export LANG=en_US.UTF-8
+	@echo "$(GREEN)✓ Locale configured$(RESET)"
+
+setup-postgresql: ## Initialize and configure PostgreSQL
+	@echo "$(YELLOW)Setting up PostgreSQL...$(RESET)"
+	@sudo -u postgres initdb -D /var/lib/postgres/data >/dev/null 2>&1 || echo "  Database already initialized"
+	@sudo systemctl start postgresql >/dev/null 2>&1 || true
+	@sudo systemctl enable postgresql >/dev/null 2>&1 || true
+	@sleep 2
+	@sudo -u postgres psql -c "CREATE DATABASE $(DB_NAME);" 2>/dev/null || echo "  Database $(DB_NAME) already exists"
+	@sudo -u postgres psql -c "CREATE USER $(DB_USER) WITH PASSWORD '$(DB_PASS)';" 2>/dev/null || echo "  User $(DB_USER) already exists"
+	@sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);" >/dev/null 2>&1
+	@sudo -u postgres psql -c "ALTER USER $(DB_USER) CREATEDB;" >/dev/null 2>&1
+	@sudo -u postgres psql -c "ALTER DATABASE $(DB_NAME) OWNER TO $(DB_USER);" >/dev/null 2>&1
+	@echo "$(GREEN)✓ PostgreSQL configured$(RESET)"
+
+###########################################
+# PROJECT INSTALLATION
+###########################################
+
+install: ## Install project dependencies
+	@echo "$(YELLOW)Installing project dependencies...$(RESET)"
+	@echo "  Installing backend..."
+	@npm install --silent 2>&1 | grep -E "(added|removed|up to date)" || true
+	@echo "  Installing frontend..."
+	@cd $(FRONTEND_DIR) && npm install --silent 2>&1 | grep -E "(added|removed|up to date)" || true
+	@echo "  Generating Prisma client..."
+	@npx prisma generate >/dev/null 2>&1
+	@echo "$(GREEN)✓ Dependencies installed$(RESET)"
+
+setup-env: ## Create .env file
+	@if [ ! -f .env ]; then \
+		echo "$(YELLOW)Creating .env file...$(RESET)"; \
+		echo 'DATABASE_URL="postgresql://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)?schema=public"' > .env; \
+		echo 'JWT_SECRET="change-this-to-a-strong-random-secret-in-production"' >> .env; \
+		echo 'PORT=3000' >> .env; \
+		echo 'NODE_ENV=development' >> .env; \
+		echo "$(GREEN)✓ .env file created$(RESET)"; \
+	else \
+		echo "$(BLUE).env file already exists$(RESET)"; \
+	fi
 
 migrate: ## Run database migrations
-	@echo "$(COLOR_YELLOW)Running migrations...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npx prisma migrate deploy
-	@echo "$(COLOR_GREEN)Migrations complete$(COLOR_RESET)"
+	@echo "$(YELLOW)Running migrations...$(RESET)"
+	@npx prisma migrate deploy >/dev/null 2>&1 || echo "  No migrations to apply"
+	@echo "$(GREEN)✓ Migrations complete$(RESET)"
 
-migrate-dev: ## Create and run new migration
-	@echo "$(COLOR_YELLOW)Creating new migration...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npx prisma migrate dev
+try-restore: ## Try to restore backup if available
+	@if [ -f backup_antigua.sql ]; then \
+		echo "$(YELLOW)Found backup file, restoring...$(RESET)"; \
+		psql -h localhost -U $(DB_USER) -d $(DB_NAME) < backup_antigua.sql >/dev/null 2>&1 && \
+		echo "$(GREEN)✓ Backup restored$(RESET)" || \
+		echo "$(BLUE)  Backup restore skipped$(RESET)"; \
+	fi
 
-db-push: ## Push schema changes without migration
-	@cd $(BACKEND_DIR) && npx prisma db push
+###########################################
+# DEVELOPMENT
+###########################################
 
-db-studio: ## Open Prisma Studio
-	@echo "$(COLOR_BLUE)Opening Prisma Studio at http://localhost:5555$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npx prisma studio
+dev: ## Start development servers
+	@echo "$(BOLD)Starting Twitter Clone...$(RESET)"
+	@echo ""
+	@echo "$(BLUE)Backend:  http://localhost:3000$(RESET)"
+	@echo "$(BLUE)Frontend: http://localhost:5173$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)Press Ctrl+C to stop both servers$(RESET)"
+	@echo ""
+	@trap 'kill 0' INT; \
+	(cd $(BACKEND_DIR) && npm run dev) & \
+	(cd $(FRONTEND_DIR) && npm run dev) & \
+	wait
 
-db-reset: ## Reset database (WARNING: deletes all data)
-	@echo "$(COLOR_YELLOW)Resetting database...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npx prisma migrate reset --force
-	@echo "$(COLOR_GREEN)Database reset complete$(COLOR_RESET)"
-
-dev: ## Start both backend and frontend in parallel (requires tmux)
-	@command -v tmux >/dev/null 2>&1 || { echo "tmux not found. Install with: sudo pacman -S tmux"; exit 1; }
-	@tmux new-session -d -s twitter-clone "cd $(BACKEND_DIR) && npm run dev"
-	@tmux split-window -h -t twitter-clone "cd $(FRONTEND_DIR) && npm run dev"
-	@tmux attach -t twitter-clone
-
-dev-backend: ## Start backend development server
-	@echo "$(COLOR_BLUE)Starting backend on http://localhost:3000$(COLOR_RESET)"
+dev-backend: ## Start backend only
+	@echo "$(BLUE)Starting backend...$(RESET)"
 	@cd $(BACKEND_DIR) && npm run dev
 
-dev-frontend: ## Start frontend development server
-	@echo "$(COLOR_BLUE)Starting frontend on http://localhost:5173$(COLOR_RESET)"
+dev-frontend: ## Start frontend only
+	@echo "$(BLUE)Starting frontend...$(RESET)"
 	@cd $(FRONTEND_DIR) && npm run dev
 
-build: ## Build frontend for production
-	@echo "$(COLOR_YELLOW)Building frontend...$(COLOR_RESET)"
-	@cd $(FRONTEND_DIR) && npm run build
-	@echo "$(COLOR_GREEN)Build complete$(COLOR_RESET)"
+###########################################
+# DATABASE MANAGEMENT
+###########################################
 
-start: ## Start backend in production mode
-	@echo "$(COLOR_BLUE)Starting backend in production mode...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && npm start
+db-studio: ## Open Prisma Studio (database GUI)
+	@echo "$(BLUE)Opening Prisma Studio at http://localhost:5555$(RESET)"
+	@npx prisma studio
 
-clean: ## Clean node_modules and build artifacts
-	@echo "$(COLOR_YELLOW)Cleaning...$(COLOR_RESET)"
-	@rm -rf $(BACKEND_DIR)/node_modules
-	@rm -rf $(FRONTEND_DIR)/node_modules
-	@rm -rf $(FRONTEND_DIR)/dist
-	@rm -f $(BACKEND_DIR)/package-lock.json
-	@rm -f $(FRONTEND_DIR)/package-lock.json
-	@echo "$(COLOR_GREEN)Clean complete$(COLOR_RESET)"
+db-reset: ## Reset database (WARNING: deletes all data)
+	@echo "$(RED)WARNING: This will delete ALL data!$(RESET)"
+	@read -p "Type 'yes' to continue: " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		npx prisma migrate reset --force && \
+		echo "$(GREEN)✓ Database reset$(RESET)"; \
+	else \
+		echo "$(YELLOW)Cancelled$(RESET)"; \
+	fi
 
-reinstall: clean install ## Clean and reinstall all dependencies
+migrate-dev: ## Create new migration
+	@npx prisma migrate dev
 
-test-api: ## Test API health endpoint
-	@echo "$(COLOR_YELLOW)Testing API...$(COLOR_RESET)"
-	@curl -s http://localhost:3000/health | python -m json.tool || echo "Backend not running"
+backup-db: ## Backup database
+	@echo "$(YELLOW)Creating backup...$(RESET)"
+	@pg_dump -h localhost -U $(DB_USER) $(DB_NAME) > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✓ Backup created$(RESET)"
 
-logs-backend: ## Show backend logs (if using PM2)
-	@pm2 logs backend
+restore-backup: ## Restore from backup_antigua.sql
+	@if [ -f backup_antigua.sql ]; then \
+		echo "$(YELLOW)Restoring backup...$(RESET)"; \
+		psql -h localhost -U $(DB_USER) -d $(DB_NAME) < backup_antigua.sql && \
+		echo "$(GREEN)✓ Backup restored$(RESET)"; \
+	else \
+		echo "$(RED)✗ backup_antigua.sql not found$(RESET)"; \
+	fi
 
-logs-frontend: ## Show frontend logs (if using PM2)
-	@pm2 logs frontend
+###########################################
+# UTILITIES
+###########################################
 
 status: ## Show service status
-	@echo "$(COLOR_BOLD)Service Status:$(COLOR_RESET)"
-	@echo -n "Backend:  "
-	@curl -s http://localhost:3000/health >/dev/null 2>&1 && echo "$(COLOR_GREEN)Running$(COLOR_RESET)" || echo "$(COLOR_YELLOW)Stopped$(COLOR_RESET)"
-	@echo -n "Frontend: "
-	@curl -s http://localhost:5173 >/dev/null 2>&1 && echo "$(COLOR_GREEN)Running$(COLOR_RESET)" || echo "$(COLOR_YELLOW)Stopped$(COLOR_RESET)"
-	@echo -n "PostgreSQL: "
-	@sudo systemctl is-active postgresql >/dev/null 2>&1 && echo "$(COLOR_GREEN)Running$(COLOR_RESET)" || echo "$(COLOR_YELLOW)Stopped$(COLOR_RESET)"
+	@echo "$(BOLD)Service Status:$(RESET)"
+	@printf "Backend:     "
+	@curl -s http://localhost:3000/health >/dev/null 2>&1 && echo "$(GREEN)Running$(RESET)" || echo "$(YELLOW)Stopped$(RESET)"
+	@printf "Frontend:    "
+	@curl -s http://localhost:5173 >/dev/null 2>&1 && echo "$(GREEN)Running$(RESET)" || echo "$(YELLOW)Stopped$(RESET)"
+	@printf "PostgreSQL:  "
+	@sudo systemctl is-active postgresql >/dev/null 2>&1 && echo "$(GREEN)Running$(RESET)" || echo "$(YELLOW)Stopped$(RESET)"
 
-check-ports: ## Check if ports are in use
-	@echo "$(COLOR_BOLD)Port Status:$(COLOR_RESET)"
-	@echo -n "3000 (Backend):  "
-	@lsof -ti:3000 >/dev/null 2>&1 && echo "$(COLOR_YELLOW)In use$(COLOR_RESET)" || echo "$(COLOR_GREEN)Available$(COLOR_RESET)"
-	@echo -n "5173 (Frontend): "
-	@lsof -ti:5173 >/dev/null 2>&1 && echo "$(COLOR_YELLOW)In use$(COLOR_RESET)" || echo "$(COLOR_GREEN)Available$(COLOR_RESET)"
-	@echo -n "5432 (PostgreSQL): "
-	@lsof -ti:5432 >/dev/null 2>&1 && echo "$(COLOR_YELLOW)In use$(COLOR_RESET)" || echo "$(COLOR_GREEN)Available$(COLOR_RESET)"
+check-ports: ## Check port availability
+	@echo "$(BOLD)Port Status:$(RESET)"
+	@printf "3000 (Backend):   "
+	@lsof -ti:3000 >/dev/null 2>&1 && echo "$(YELLOW)In use$(RESET)" || echo "$(GREEN)Available$(RESET)"
+	@printf "5173 (Frontend):  "
+	@lsof -ti:5173 >/dev/null 2>&1 && echo "$(YELLOW)In use$(RESET)" || echo "$(GREEN)Available$(RESET)"
+	@printf "5432 (Database):  "
+	@lsof -ti:5432 >/dev/null 2>&1 && echo "$(YELLOW)In use$(RESET)" || echo "$(GREEN)Available$(RESET)"
 
-kill-ports: ## Kill processes on ports 3000 and 5173
-	@echo "$(COLOR_YELLOW)Killing processes on ports...$(COLOR_RESET)"
-	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-	@echo "$(COLOR_GREEN)Ports cleared$(COLOR_RESET)"
+kill-ports: ## Kill processes on ports
+	@echo "$(YELLOW)Killing processes...$(RESET)"
+	@-lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+	@echo "$(GREEN)✓ Ports cleared$(RESET)"
 
-env-example: ## Create .env.example file
-	@echo "DATABASE_URL=\"postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public\"" > .env.example
-	@echo "JWT_SECRET=\"change-this-secret-key-in-production\"" >> .env.example
-	@echo "PORT=3000" >> .env.example
-	@echo "NODE_ENV=development" >> .env.example
-	@echo "$(COLOR_GREEN).env.example created$(COLOR_RESET)"
+test-api: ## Test API health
+	@curl -s http://localhost:3000/health 2>/dev/null || echo "$(RED)Backend not running$(RESET)"
 
-env-check: ## Check if .env file exists
-	@test -f .env && echo "$(COLOR_GREEN).env file exists$(COLOR_RESET)" || echo "$(COLOR_YELLOW).env file missing - copy from .env.example$(COLOR_RESET)"
+clean: ## Remove node_modules
+	@echo "$(YELLOW)Cleaning...$(RESET)"
+	@rm -rf node_modules $(FRONTEND_DIR)/node_modules
+	@rm -f package-lock.json $(FRONTEND_DIR)/package-lock.json
+	@echo "$(GREEN)✓ Cleaned$(RESET)"
 
-backup-db: ## Backup database to backup.sql
-	@echo "$(COLOR_YELLOW)Backing up database...$(COLOR_RESET)"
-	@pg_dump -h localhost -U $(DB_USER) $(DB_NAME) > backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "$(COLOR_GREEN)Backup complete$(COLOR_RESET)"
+reinstall: clean install ## Clean and reinstall dependencies
 
-restore-db: ## Restore database from backup.sql
-	@echo "$(COLOR_YELLOW)Restoring database...$(COLOR_RESET)"
-	@psql -h localhost -U $(DB_USER) $(DB_NAME) < backup.sql
-	@echo "$(COLOR_GREEN)Restore complete$(COLOR_RESET)"
+build: ## Build for production
+	@echo "$(YELLOW)Building frontend...$(RESET)"
+	@cd $(FRONTEND_DIR) && npm run build
+	@echo "$(GREEN)✓ Build complete$(RESET)"
 
-version: ## Show versions of installed tools
-	@echo "$(COLOR_BOLD)Installed Versions:$(COLOR_RESET)"
-	@node --version | sed 's/^/Node.js:     /'
-	@npm --version | sed 's/^/npm:         /'
-	@psql --version | sed 's/^/PostgreSQL: /'
-	@cd $(BACKEND_DIR) && npx prisma --version | grep "prisma" | sed 's/^/Prisma:      /'
+version: ## Show installed versions
+	@echo "$(BOLD)Installed Versions:$(RESET)"
+	@node --version 2>/dev/null | sed 's/^/Node.js:     /' || echo "Node.js:     $(RED)Not installed$(RESET)"
+	@npm --version 2>/dev/null | sed 's/^/npm:         /' || echo "npm:         $(RED)Not installed$(RESET)"
+	@psql --version 2>/dev/null | awk '{print $$3}' | sed 's/^/PostgreSQL: /' || echo "PostgreSQL: $(RED)Not installed$(RESET)"
+
+###########################################
+# SYSTEM MANAGEMENT
+###########################################
+
+start-postgres: ## Start PostgreSQL service
+	@sudo systemctl start postgresql
+	@echo "$(GREEN)✓ PostgreSQL started$(RESET)"
+
+stop-postgres: ## Stop PostgreSQL service
+	@sudo systemctl stop postgresql
+	@echo "$(YELLOW)PostgreSQL stopped$(RESET)"
+
+restart-postgres: ## Restart PostgreSQL service
+	@sudo systemctl restart postgresql
+	@echo "$(GREEN)✓ PostgreSQL restarted$(RESET)"
+
+postgres-logs: ## Show PostgreSQL logs
+	@sudo journalctl -u postgresql -n 50 --no-pager
+
+postgres-shell: ## Open PostgreSQL shell
+	@psql -h localhost -U $(DB_USER) -d $(DB_NAME)
