@@ -21,13 +21,16 @@ help: ## Show this help message
 	@echo "$(COLOR_BOLD)Available commands:$(COLOR_RESET)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(COLOR_BLUE)%-20s$(COLOR_RESET) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "$(COLOR_BOLD)Quick Start on Arch Linux:$(COLOR_RESET)"
-	@echo "  1. make check-system    # Verify all dependencies"
+	@echo "$(COLOR_BOLD)Quick Start on Fresh Arch Linux:$(COLOR_RESET)"
+	@echo "  1. make fix-postgres    # Initialize PostgreSQL (if having issues)"
 	@echo "  2. make install         # Install Node.js dependencies"
 	@echo "  3. make env-create      # Create .env file"
 	@echo "  4. make setup-db        # Setup PostgreSQL database"
 	@echo "  5. make migrate         # Run database migrations"
 	@echo "  6. make dev             # Start the application"
+	@echo ""
+	@echo "$(COLOR_BOLD)Or use the one-command setup:$(COLOR_RESET)"
+	@echo "  make quick-setup        # Does everything automatically"
 
 check-system: ## Check if all system dependencies are installed
 	@echo "$(COLOR_BOLD)Checking system dependencies...$(COLOR_RESET)"
@@ -39,23 +42,79 @@ check-system: ## Check if all system dependencies are installed
 	@command -v lsof >/dev/null 2>&1 && echo "$(COLOR_GREEN)✓ lsof installed$(COLOR_RESET)" || echo "$(COLOR_RED)✗ lsof not found$(COLOR_RESET) - Install with: sudo pacman -S lsof"
 	@command -v tmux >/dev/null 2>&1 && echo "$(COLOR_GREEN)✓ tmux installed$(COLOR_RESET)" || echo "$(COLOR_YELLOW)⚠ tmux not found (optional)$(COLOR_RESET) - Install with: sudo pacman -S tmux"
 	@echo ""
+	@echo "$(COLOR_BOLD)System Locale Status:$(COLOR_RESET)"
+	@locale -a 2>/dev/null | grep -q "en_US.utf8" && echo "$(COLOR_GREEN)✓ en_US.UTF-8 locale available$(COLOR_RESET)" || echo "$(COLOR_RED)✗ en_US.UTF-8 locale not configured$(COLOR_RESET) - Run: make locale-setup"
+	@echo ""
 	@echo "$(COLOR_BOLD)PostgreSQL Service Status:$(COLOR_RESET)"
 	@sudo systemctl is-active postgresql >/dev/null 2>&1 && echo "$(COLOR_GREEN)✓ PostgreSQL is running$(COLOR_RESET)" || echo "$(COLOR_RED)✗ PostgreSQL is not running$(COLOR_RESET) - Start with: sudo systemctl start postgresql"
 	@sudo systemctl is-enabled postgresql >/dev/null 2>&1 && echo "$(COLOR_GREEN)✓ PostgreSQL is enabled$(COLOR_RESET)" || echo "$(COLOR_YELLOW)⚠ PostgreSQL is not enabled$(COLOR_RESET) - Enable with: sudo systemctl enable postgresql"
 
+locale-setup: ## Configure system locales for PostgreSQL (Arch Linux)
+	@echo "$(COLOR_BOLD)Setting up system locales...$(COLOR_RESET)"
+	@echo "$(COLOR_YELLOW)1. Enabling en_US.UTF-8 locale...$(COLOR_RESET)"
+	@sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+	@echo "$(COLOR_YELLOW)2. Generating locales...$(COLOR_RESET)"
+	@sudo locale-gen
+	@echo "$(COLOR_YELLOW)3. Setting default locale...$(COLOR_RESET)"
+	@echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+	@echo "$(COLOR_GREEN)✓ Locales configured successfully!$(COLOR_RESET)"
+	@echo "$(COLOR_BLUE)Please run the following in your terminal:$(COLOR_RESET)"
+	@echo "  export LANG=en_US.UTF-8"
+	@echo "  export LC_ALL=en_US.UTF-8"
+	@echo ""
+	@echo "$(COLOR_YELLOW)Or logout and login again for changes to take effect$(COLOR_RESET)"
+
 postgres-init: ## Initialize PostgreSQL for first time (Arch Linux)
+	@echo "$(COLOR_YELLOW)Checking system locales...$(COLOR_RESET)"
+	@locale -a | grep -q "en_US.utf8" || (echo "$(COLOR_YELLOW)Configuring locales...$(COLOR_RESET)" && \
+		sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && \
+		sudo locale-gen && \
+		echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf)
 	@echo "$(COLOR_YELLOW)Checking PostgreSQL initialization...$(COLOR_RESET)"
 	@if [ ! -d "/var/lib/postgres/data" ] || [ -z "$$(ls -A /var/lib/postgres/data 2>/dev/null)" ]; then \
+		echo "$(COLOR_YELLOW)PostgreSQL data directory not found or empty.$(COLOR_RESET)"; \
 		echo "$(COLOR_YELLOW)Initializing PostgreSQL database...$(COLOR_RESET)"; \
-		sudo -u postgres initdb -D /var/lib/postgres/data; \
-		echo "$(COLOR_GREEN)PostgreSQL initialized$(COLOR_RESET)"; \
+		sudo -u postgres bash -c "export LANG=en_US.UTF-8 && export LC_ALL=en_US.UTF-8 && initdb -D /var/lib/postgres/data --locale=en_US.UTF-8"; \
+		echo "$(COLOR_GREEN)✓ PostgreSQL initialized successfully$(COLOR_RESET)"; \
 	else \
-		echo "$(COLOR_GREEN)PostgreSQL already initialized$(COLOR_RESET)"; \
+		echo "$(COLOR_GREEN)✓ PostgreSQL already initialized$(COLOR_RESET)"; \
 	fi
+	@echo "$(COLOR_YELLOW)Enabling PostgreSQL service...$(COLOR_RESET)"
+	@sudo systemctl enable postgresql
 	@echo "$(COLOR_YELLOW)Starting PostgreSQL service...$(COLOR_RESET)"
+	@sudo systemctl start postgresql || (echo "$(COLOR_RED)Failed to start. Checking status...$(COLOR_RESET)" && sudo systemctl status postgresql && exit 1)
+	@echo "$(COLOR_GREEN)✓ PostgreSQL service started successfully$(COLOR_RESET)"
+
+fix-postgres: ## Fix common PostgreSQL issues on Arch Linux (including locales)
+	@echo "$(COLOR_BOLD)Fixing PostgreSQL issues...$(COLOR_RESET)"
+	@echo "$(COLOR_YELLOW)1. Configuring system locales...$(COLOR_RESET)"
+	@grep -q "^en_US.UTF-8" /etc/locale.gen || (sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && sudo locale-gen)
+	@test -f /etc/locale.conf || echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+	@export LANG=en_US.UTF-8 && export LC_ALL=en_US.UTF-8
+	@echo "$(COLOR_GREEN)✓ Locales configured$(COLOR_RESET)"
+	@echo "$(COLOR_YELLOW)2. Stopping PostgreSQL if running...$(COLOR_RESET)"
+	@sudo systemctl stop postgresql 2>/dev/null || true
+	@echo "$(COLOR_YELLOW)3. Checking data directory...$(COLOR_RESET)"
+	@if [ -d "/var/lib/postgres/data" ]; then \
+		if [ -z "$$(ls -A /var/lib/postgres/data 2>/dev/null)" ]; then \
+			echo "$(COLOR_YELLOW)   Data directory exists but is empty. Removing...$(COLOR_RESET)"; \
+			sudo rm -rf /var/lib/postgres/data; \
+		else \
+			echo "$(COLOR_YELLOW)   Data directory exists with data. Backing up...$(COLOR_RESET)"; \
+			sudo mv /var/lib/postgres/data /var/lib/postgres/data.backup.$$(date +%Y%m%d_%H%M%S); \
+		fi; \
+	fi
+	@echo "$(COLOR_YELLOW)4. Creating fresh data directory...$(COLOR_RESET)"
+	@sudo mkdir -p /var/lib/postgres/data
+	@sudo chown postgres:postgres /var/lib/postgres/data
+	@sudo chmod 700 /var/lib/postgres/data
+	@echo "$(COLOR_YELLOW)5. Initializing PostgreSQL with locale...$(COLOR_RESET)"
+	@sudo -u postgres bash -c "export LANG=en_US.UTF-8 && export LC_ALL=en_US.UTF-8 && initdb -D /var/lib/postgres/data --locale=en_US.UTF-8"
+	@echo "$(COLOR_YELLOW)6. Starting PostgreSQL...$(COLOR_RESET)"
 	@sudo systemctl enable postgresql
 	@sudo systemctl start postgresql
-	@echo "$(COLOR_GREEN)PostgreSQL service started$(COLOR_RESET)"
+	@echo "$(COLOR_GREEN)✓ PostgreSQL fixed and running!$(COLOR_RESET)"
+	@echo "$(COLOR_BLUE)Now run: make setup-db$(COLOR_RESET)"
 
 install: ## Install all dependencies (backend + frontend + Prisma)
 	@echo "$(COLOR_GREEN)Installing dependencies...$(COLOR_RESET)"
@@ -238,7 +297,7 @@ version: ## Show versions of installed tools
 env-check: ## Check if .env file exists
 	@test -f .env && echo "$(COLOR_GREEN)✓ .env file exists$(COLOR_RESET)" || echo "$(COLOR_YELLOW)✗ .env file missing - run 'make env-create'$(COLOR_RESET)"
 
-quick-setup: check-system postgres-init install env-create setup-db migrate ## Complete setup for fresh Arch Linux install
+quick-setup: check-system fix-postgres install env-create setup-db migrate ## Complete setup for fresh Arch Linux install
 	@echo ""
 	@echo "$(COLOR_GREEN)═══════════════════════════════════════════════════════$(COLOR_RESET)"
 	@echo "$(COLOR_GREEN)✓ Setup complete! Your application is ready.$(COLOR_RESET)"
