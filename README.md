@@ -75,15 +75,23 @@ sudo pacman -Syyu
 # Install all required packages
 sudo pacman -S nodejs npm postgresql git make base-devel lsof tmux
 
+# Configure locales (REQUIRED for PostgreSQL)
+# Edit locale.gen and uncomment en_US.UTF-8
+sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sudo locale-gen
+echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# Initialize PostgreSQL with locale
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8
+
 # Enable and start PostgreSQL service
 sudo systemctl enable postgresql
 sudo systemctl start postgresql
 
-# Initialize PostgreSQL (ONLY if it's your first time)
-sudo -u postgres initdb -D /var/lib/postgres/data
-
-# Start PostgreSQL after initialization
-sudo systemctl start postgresql
+# Verify it's running
+sudo systemctl status postgresql
 ```
 
 ### Installing Prerequisites on Ubuntu/Debian
@@ -104,25 +112,42 @@ sudo systemctl start postgresql
 git clone https://github.com/etec-programacion-3/programacion-3-2025-saez-Tataso.git
 cd programacion-3-2025-saez-Tataso
 
-# 2. Ensure PostgreSQL is running
-sudo systemctl status postgresql
-# If not running:
+# 2. Configure system locales (REQUIRED for PostgreSQL)
+sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sudo locale-gen
+echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# 3. Initialize PostgreSQL with locale
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8
+
+# 4. Enable and start PostgreSQL
+sudo systemctl enable postgresql
 sudo systemctl start postgresql
 
-# 3. Install all dependencies
+# 5. Verify PostgreSQL is running
+sudo systemctl status postgresql
+
+# 6. Install all dependencies
 make install
 
-# 4. Create .env file
+# 7. Create .env file
 make env-create
 
-# 5. Setup database
+# 8. Setup database
 make setup-db
 
-# 6. Run migrations
+# 9. Run migrations
 make migrate
 
-# 7. Start application
+# 10. Start application
 make dev
+```
+
+**Or use the automatic setup (after configuring locales):**
+```bash
+make quick-setup
 ```
 
 ### Step by Step Installation (Arch Linux)
@@ -481,22 +506,51 @@ NODE_ENV=production
 
 ## Troubleshooting
 
-### PostgreSQL Not Starting (Arch Linux)
+### PostgreSQL Locale Error (Arch Linux) - VERY COMMON
 
+If you get this error:
+```
+initdb: error: invalid locale settings; check LANG and LC_* environment variables
+```
+
+**Solution:**
 ```bash
-# Check if data directory exists
-ls -la /var/lib/postgres/data
+# 1. Configure system locales
+sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sudo locale-gen
+echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
 
-# If empty, initialize database
-sudo -u postgres initdb -D /var/lib/postgres/data
+# 2. Export locale variables
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
 
-# Start and enable service
+# 3. Initialize PostgreSQL with locale
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8
+
+# 4. Start PostgreSQL
 sudo systemctl enable postgresql
 sudo systemctl start postgresql
-
-# Check status
-sudo systemctl status postgresql
 ```
+
+### PostgreSQL Not Starting (Arch Linux)
+
+If you get this error:
+```
+Job for postgresql.service failed because the control process exited with error code.
+```
+
+**Solution:**
+```bash
+# Use the automatic fix command
+make fix-postgres
+```
+
+This command will:
+1. Configure system locales
+2. Stop PostgreSQL if running
+3. Backup any existing data
+4. Initialize a fresh PostgreSQL installation with correct locale
+5. Start the service
 
 ### Permission Denied Errors
 
