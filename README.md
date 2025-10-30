@@ -66,45 +66,112 @@ Before installing, ensure you have the following installed on your system:
 - **Git**
 - **make** (for using Makefile commands)
 
-### Installing Prerequisites on Arch Linux
+### Installing Prerequisites on Arch Linux (FRESH INSTALL)
 
 ```bash
-sudo pacman -S nodejs npm postgresql git make
+# Update system
+sudo pacman -Syyu
+
+# Install all required packages
+sudo pacman -S nodejs npm postgresql git make base-devel lsof tmux
+
+# Configure locales (REQUIRED for PostgreSQL)
+# Edit locale.gen and uncomment en_US.UTF-8
+sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sudo locale-gen
+echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# Initialize PostgreSQL with locale
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8
+
+# Enable and start PostgreSQL service
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+
+# Verify it's running
+sudo systemctl status postgresql
 ```
 
 ### Installing Prerequisites on Ubuntu/Debian
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs postgresql postgresql-contrib git make
+sudo apt-get install -y nodejs postgresql postgresql-contrib git make lsof tmux
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
 ```
 
 ## Installation
 
-### Quick Start
+### Quick Start for Arch Linux
 
 ```bash
-# Clone repository
-git clone <repository-url>
+# 1. Clone repository
+git clone https://github.com/etec-programacion-3/programacion-3-2025-saez-Tataso.git
 cd programacion-3-2025-saez-Tataso
 
-# Install all dependencies
+# 2. Configure system locales (REQUIRED for PostgreSQL)
+sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sudo locale-gen
+echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# 3. Initialize PostgreSQL with locale
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8
+
+# 4. Enable and start PostgreSQL
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+
+# 5. Verify PostgreSQL is running
+sudo systemctl status postgresql
+
+# 6. Install all dependencies
 make install
 
-# Setup database
+# 7. Create .env file
+make env-create
+
+# 8. Setup database
 make setup-db
 
-# Run migrations
+# 9. Run migrations
 make migrate
 
-# Start application
+# 10. Start application
 make dev
 ```
 
-### Manual Installation
+**Or use the automatic setup (after configuring locales):**
+```bash
+make quick-setup
+```
 
-If you prefer not to use Makefile:
+### Step by Step Installation (Arch Linux)
 
+If you prefer to understand each step or if Makefile doesn't work:
+
+#### 1. System Setup
+```bash
+# Ensure PostgreSQL is installed and running
+sudo pacman -S postgresql
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+```
+
+#### 2. Initialize PostgreSQL (ONLY on first install)
+```bash
+# Check if PostgreSQL data directory exists
+if [ ! -d "/var/lib/postgres/data" ]; then
+    sudo -u postgres initdb -D /var/lib/postgres/data
+fi
+sudo systemctl restart postgresql
+```
+
+#### 3. Install Node.js dependencies
 ```bash
 # Install backend dependencies
 npm install
@@ -116,21 +183,42 @@ cd ..
 
 # Generate Prisma client
 npx prisma generate
+```
 
-# Setup PostgreSQL database
+#### 4. Setup PostgreSQL database
+```bash
+# Access PostgreSQL as postgres user
 sudo -u postgres psql
 ```
 
 In PostgreSQL prompt:
 ```sql
+-- Create database
 CREATE DATABASE mi_proyecto;
-CREATE USER admin WITH PASSWORD 'your_password';
+
+-- Create user with password
+CREATE USER admin WITH PASSWORD 'admin';
+
+-- Grant all privileges
 GRANT ALL PRIVILEGES ON DATABASE mi_proyecto TO admin;
+
+-- Allow user to create databases (for testing)
 ALTER USER admin CREATEDB;
+
+-- Exit
 \q
 ```
 
-Run migrations:
+#### 5. Configure environment
+Create a `.env` file in the project root:
+```bash
+DATABASE_URL="postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public"
+JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+PORT=3000
+NODE_ENV=development
+```
+
+#### 6. Run migrations
 ```bash
 npx prisma migrate deploy
 ```
@@ -139,19 +227,37 @@ npx prisma migrate deploy
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+The `.env` file should contain:
 
 ```bash
-DATABASE_URL="postgresql://admin:your_password@localhost:5432/mi_proyecto?schema=public"
+DATABASE_URL="postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public"
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 PORT=3000
 NODE_ENV=development
 ```
 
-Important notes:
-- Replace `your_password` with your actual PostgreSQL password
+**Important notes:**
+- The default password is 'admin' for development. Change it in production!
 - Change `JWT_SECRET` to a strong, random string in production
 - Never commit `.env` file to version control
+
+### PostgreSQL Configuration for Arch Linux
+
+If you have authentication issues, you may need to edit PostgreSQL configuration:
+
+```bash
+# Edit pg_hba.conf
+sudo nano /var/lib/postgres/data/pg_hba.conf
+
+# Ensure these lines exist:
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             all                                     trust
+host    all             all             127.0.0.1/32            md5
+host    all             all             ::1/128                 md5
+
+# Restart PostgreSQL after changes
+sudo systemctl restart postgresql
+```
 
 ### Database Schema
 
@@ -176,10 +282,10 @@ The application uses Prisma for database management. The schema includes:
 ### Using Makefile (Recommended)
 
 ```bash
-# Start both backend and frontend
+# Start both backend and frontend (requires tmux)
 make dev
 
-# Or start separately
+# Or start separately in different terminals
 make dev-backend  # Terminal 1
 make dev-frontend # Terminal 2
 ```
@@ -296,19 +402,10 @@ Authorization: Bearer <token>
 ├── frontend/                     # Frontend application
 │   ├── src/
 │   │   ├── components/          # Reusable components
-│   │   │   ├── Post.jsx
-│   │   │   ├── CreatePost.jsx
-│   │   │   └── ProtectedRoute.jsx
 │   │   ├── pages/               # Route components
-│   │   │   ├── Feed.jsx
-│   │   │   ├── Login.jsx
-│   │   │   └── Register.jsx
 │   │   ├── layouts/             # Layout components
-│   │   │   └── Layout.jsx
 │   │   ├── context/             # React Context
-│   │   │   └── AuthContext.jsx
 │   │   ├── services/            # API integration
-│   │   │   └── api.js
 │   │   ├── App.jsx              # Root component
 │   │   ├── main.jsx             # Application entry
 │   │   └── index.css            # Global styles
@@ -343,6 +440,7 @@ make kill-ports     # Kill processes on used ports
 make db-studio      # Open Prisma Studio
 make backup-db      # Backup database
 make version        # Show installed versions
+make env-create     # Create .env file from template
 ```
 
 ### Database Management
@@ -408,6 +506,63 @@ NODE_ENV=production
 
 ## Troubleshooting
 
+### PostgreSQL Locale Error (Arch Linux) - VERY COMMON
+
+If you get this error:
+```
+initdb: error: invalid locale settings; check LANG and LC_* environment variables
+```
+
+**Solution:**
+```bash
+# 1. Configure system locales
+sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sudo locale-gen
+echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
+
+# 2. Export locale variables
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# 3. Initialize PostgreSQL with locale
+sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8
+
+# 4. Start PostgreSQL
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+```
+
+### PostgreSQL Not Starting (Arch Linux)
+
+If you get this error:
+```
+Job for postgresql.service failed because the control process exited with error code.
+```
+
+**Solution:**
+```bash
+# Use the automatic fix command
+make fix-postgres
+```
+
+This command will:
+1. Configure system locales
+2. Stop PostgreSQL if running
+3. Backup any existing data
+4. Initialize a fresh PostgreSQL installation with correct locale
+5. Start the service
+
+### Permission Denied Errors
+
+```bash
+# Fix PostgreSQL permissions
+sudo chown -R postgres:postgres /var/lib/postgres
+sudo chmod 700 /var/lib/postgres/data
+
+# Restart service
+sudo systemctl restart postgresql
+```
+
 ### Port Already in Use
 
 ```bash
@@ -429,6 +584,9 @@ sudo systemctl restart postgresql
 
 # Test database connection
 psql -h localhost -U admin -d mi_proyecto
+
+# If authentication fails, check pg_hba.conf
+sudo nano /var/lib/postgres/data/pg_hba.conf
 ```
 
 ### Cannot Find Module
@@ -457,6 +615,17 @@ Ensure backend CORS is configured correctly in `src/index.js`:
 app.use(cors({
   origin: 'http://localhost:5173'
 }));
+```
+
+### tmux Not Found
+
+```bash
+# Install tmux for parallel development
+sudo pacman -S tmux
+
+# Or run backend and frontend separately
+make dev-backend  # Terminal 1
+make dev-frontend # Terminal 2
 ```
 
 ## Contributing
