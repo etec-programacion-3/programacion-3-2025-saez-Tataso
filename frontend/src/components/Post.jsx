@@ -1,4 +1,5 @@
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 function Post({ post, onDelete }) {
   const { user } = useAuth();
@@ -34,14 +35,19 @@ function Post({ post, onDelete }) {
             {post.author.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <strong style={authorNameStyle}>{post.author.name}</strong>
+            <Link 
+              to={`/perfil/${post.authorId}`} 
+              style={authorNameLinkStyle}
+            >
+              <strong style={authorNameStyle}>{post.author.name}</strong>
+            </Link>
             <div style={dateStyle}>{formatDate(post.createdAt)}</div>
           </div>
         </div>
         
         {isAuthor && (
           <button onClick={handleDelete} style={deleteButtonStyle}>
-            <span style = {statStyle}>Eliminar</span>
+            <span style={statStyle}>Eliminar</span>
           </button>
         )}
       </div>
@@ -92,6 +98,12 @@ const avatarStyle = {
   justifyContent: 'center',
   fontSize: '1.25rem',
   fontWeight: 'bold'
+};
+
+const authorNameLinkStyle = {
+  textDecoration: 'none',
+  color: 'inherit',
+  transition: 'color 0.2s'
 };
 
 const authorNameStyle = {

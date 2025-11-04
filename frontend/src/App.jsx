@@ -3,6 +3,7 @@ import Layout from './layouts/Layout';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import UserProfile from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -20,6 +21,14 @@ function App() {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route 
+            path="/perfil/:userId" 
+            element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </Layout>
     </BrowserRouter>

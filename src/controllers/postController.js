@@ -77,4 +77,44 @@ const deletePost = async (req, res) => {
   }
 };
 
-module.exports = { createPost, getAllPosts, deletePost };
+// Obtener todos los posts de un usuario específico
+const getPostsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Verificar que el usuario existe
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Obtener posts del usuario
+    const posts = await prisma.post.findMany({
+      where: { authorId: parseInt(userId) },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        author: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    res.json({ 
+      posts,
+      count: posts.length 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Actualizar el module.exports:
+module.exports = { 
+  createPost, 
+  getAllPosts, 
+  deletePost,
+  getPostsByUser
+};
