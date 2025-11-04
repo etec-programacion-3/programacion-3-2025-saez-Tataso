@@ -27,7 +27,13 @@ export const authAPI = {
 export const postsAPI = {
   getAll: () => api.get('/posts'),
   create: (data) => api.post('/posts', data),
-  delete: (id) => api.delete(`/posts/${id}`)
+  delete: (id) => api.delete(`/posts/${id}`),
+  getByUser: (userId) => api.get(`/users/${userId}/posts`)
+};
+
+// Nuevo objeto para usuarios:
+export const usersAPI = {
+  getById: (userId) => api.get(`/users/${userId}`)
 };
 
 export default api;

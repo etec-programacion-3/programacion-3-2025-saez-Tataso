@@ -27,7 +27,34 @@ const createUser = async (req, res) => {
   }
 };
 
+// Obtener un usuario específico por ID
+const getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { 
+        id: true, 
+        name: true, 
+        email: true, 
+        createdAt: true 
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Actualizar el module.exports para incluir la nueva función:
 module.exports = {
   getAllUsers,
-  createUser
+  createUser,
+  getUserById
 };
