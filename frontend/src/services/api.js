@@ -34,7 +34,9 @@ export const postsAPI = {
 export const commentsAPI = {
   getByPost: (postId) => api.get(`/posts/${postId}/comments`),
   create: (postId, data) => api.post(`/posts/${postId}/comments`, data),
-  delete: (commentId) => api.delete(`/posts/comments/${commentId}`)
+  delete: (commentId) => api.delete(`/posts/comments/${commentId}`),
+  like: (commentId) => api.post(`/posts/comments/${commentId}/like`),
+  unlike: (commentId) => api.delete(`/posts/comments/${commentId}/like`)
 };
 
 export const usersAPI = {

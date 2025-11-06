@@ -1,8 +1,15 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { commentsAPI } from '../services/api';
 
-function Comment({ comment, onDelete }) {
+function Comment({ comment, onDelete, onLikeUpdate }) {
   const { user } = useAuth();
   const isAuthor = user?.id === comment.userId;
+  
+  // Estado para likes
+  const [isLiked, setIsLiked] = useState(comment.isLikedByCurrentUser);
+  const [likesCount, setLikesCount] = useState(comment.likesCount);
+  const [isLoadingLike, setIsLoadingLike] = useState(false);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -30,6 +37,40 @@ function Comment({ comment, onDelete }) {
     }
   };
 
+  const handleLike = async () => {
+    if (isLoadingLike) return;
+
+    // Actualización optimista
+    const previousIsLiked = isLiked;
+    const previousLikesCount = likesCount;
+    
+    setIsLiked(!isLiked);
+    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+    setIsLoadingLike(true);
+
+    try {
+      if (isLiked) {
+        await commentsAPI.unlike(comment.id);
+      } else {
+        await commentsAPI.like(comment.id);
+      }
+      
+      if (onLikeUpdate) {
+        onLikeUpdate(comment.id, !isLiked);
+      }
+    } catch (error) {
+      console.error('Error al dar/quitar like:', error);
+      
+      // Rollback
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousLikesCount);
+      
+      alert('Error al procesar el like');
+    } finally {
+      setIsLoadingLike(false);
+    }
+  };
+
   return (
     <div style={commentStyle}>
       <div style={commentHeaderStyle}>
@@ -42,6 +83,27 @@ function Comment({ comment, onDelete }) {
             <span style={dateStyle}>{formatDate(comment.createdAt)}</span>
           </div>
           <p style={contentStyle}>{comment.content}</p>
+          
+          {/* Botón de like */}
+          <div style={actionsStyle}>
+            <button 
+              onClick={handleLike}
+              style={{
+                ...likeButtonStyle,
+                color: isLiked ? '#e0245e' : '#657786'
+              }}
+              disabled={isLoadingLike}
+            >
+              <span style={{ fontSize: '0.9rem' }}>
+                {isLiked ? '❤️' : '🤍'}
+              </span>
+              {likesCount > 0 && (
+                <span style={{ marginLeft: '0.3rem', fontSize: '0.75rem' }}>
+                  {likesCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         {isAuthor && (
           <button onClick={handleDelete} style={deleteButtonStyle} title="Eliminar">
@@ -103,9 +165,28 @@ const dateStyle = {
 const contentStyle = {
   fontSize: '0.875rem',
   color: '#14171a',
-  margin: 0,
+  margin: '0 0 6px 0',
   lineHeight: '1.4',
   wordBreak: 'break-word'
+};
+
+const actionsStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  marginTop: '4px'
+};
+
+const likeButtonStyle = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  padding: '4px 8px',
+  borderRadius: '4px',
+  transition: 'background-color 0.2s',
+  fontSize: '0.75rem',
+  fontWeight: '500'
 };
 
 const deleteButtonStyle = {

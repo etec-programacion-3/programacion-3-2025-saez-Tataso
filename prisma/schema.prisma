@@ -14,9 +14,10 @@ model User {
   password  String
   createdAt DateTime @default(now())
   
-  posts     Post[]
-  likes     Like[]
-  comments  Comment[]  // Nueva relación
+  posts         Post[]
+  likes         Like[]
+  comments      Comment[]
+  commentLikes  CommentLike[]  // Nueva relación
 }
 
 model Post {
@@ -28,7 +29,7 @@ model Post {
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   
   likes     Like[]
-  comments  Comment[]  // Nueva relación
+  comments  Comment[]
 }
 
 model Like {
@@ -54,4 +55,19 @@ model Comment {
   
   postId    Int
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  likes     CommentLike[]  // Nueva relación
+}
+
+model CommentLike {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  commentId Int
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, commentId])
 }

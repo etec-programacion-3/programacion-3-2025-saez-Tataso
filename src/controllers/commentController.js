@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 const getCommentsByPost = async (req, res) => {
   try {
     const { postId } = req.params;
+    const userId = req.user?.userId;
 
-    // Verificar que el post existe
     const post = await prisma.post.findUnique({
       where: { id: parseInt(postId) }
     });
@@ -15,21 +15,31 @@ const getCommentsByPost = async (req, res) => {
       return res.status(404).json({ error: 'Post no encontrado' });
     }
 
-    // Obtener comentarios
     const comments = await prisma.comment.findMany({
       where: { postId: parseInt(postId) },
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
           select: { id: true, name: true, email: true }
-        }
+        },
+        likes: true
       }
     });
 
+    // Agregar metadata de likes
+    const commentsWithLikes = comments.map(comment => ({
+      ...comment,
+      likesCount: comment.likes.length,
+      isLikedByCurrentUser: userId 
+        ? comment.likes.some(like => like.userId === userId)
+        : false,
+      likes: undefined
+    }));
+
     res.json({
       success: true,
-      count: comments.length,
-      comments
+      count: commentsWithLikes.length,
+      comments: commentsWithLikes
     });
   } catch (error) {
     console.error('Error al obtener comentarios:', error);
@@ -44,12 +54,10 @@ const createComment = async (req, res) => {
     const { content } = req.body;
     const userId = req.user.userId;
 
-    // Validar contenido
     if (!content || content.trim() === '') {
       return res.status(400).json({ error: 'El contenido del comentario no puede estar vacío' });
     }
 
-    // Verificar que el post existe
     const post = await prisma.post.findUnique({
       where: { id: parseInt(postId) }
     });
@@ -58,7 +66,6 @@ const createComment = async (req, res) => {
       return res.status(404).json({ error: 'Post no encontrado' });
     }
 
-    // Crear comentario
     const comment = await prisma.comment.create({
       data: {
         content: content.trim(),
@@ -68,11 +75,11 @@ const createComment = async (req, res) => {
       include: {
         user: {
           select: { id: true, name: true, email: true }
-        }
+        },
+        likes: true
       }
     });
 
-    // Obtener conteo actualizado
     const commentsCount = await prisma.comment.count({
       where: { postId: parseInt(postId) }
     });
@@ -80,7 +87,12 @@ const createComment = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Comentario creado exitosamente',
-      comment,
+      comment: {
+        ...comment,
+        likesCount: 0,
+        isLikedByCurrentUser: false,
+        likes: undefined
+      },
       commentsCount
     });
   } catch (error) {
@@ -89,13 +101,12 @@ const createComment = async (req, res) => {
   }
 };
 
-// Eliminar un comentario (solo el autor)
+// Eliminar un comentario
 const deleteComment = async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user.userId;
 
-    // Buscar el comentario
     const comment = await prisma.comment.findUnique({
       where: { id: parseInt(commentId) }
     });
@@ -104,20 +115,16 @@ const deleteComment = async (req, res) => {
       return res.status(404).json({ error: 'Comentario no encontrado' });
     }
 
-    // Verificar que el usuario es el autor
     if (comment.userId !== userId) {
       return res.status(403).json({ error: 'No puedes eliminar un comentario que no es tuyo' });
     }
 
-    // Guardar postId antes de eliminar
     const postId = comment.postId;
 
-    // Eliminar comentario
     await prisma.comment.delete({
       where: { id: parseInt(commentId) }
     });
 
-    // Obtener conteo actualizado
     const commentsCount = await prisma.comment.count({
       where: { postId: postId }
     });
@@ -133,8 +140,103 @@ const deleteComment = async (req, res) => {
   }
 };
 
+// Dar like a un comentario
+const likeComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.userId;
+
+    const comment = await prisma.comment.findUnique({
+      where: { id: parseInt(commentId) }
+    });
+
+    if (!comment) {
+      return res.status(404).json({ error: 'Comentario no encontrado' });
+    }
+
+    const existingLike = await prisma.commentLike.findUnique({
+      where: {
+        userId_commentId: {
+          userId: userId,
+          commentId: parseInt(commentId)
+        }
+      }
+    });
+
+    if (existingLike) {
+      return res.status(400).json({ error: 'Ya diste like a este comentario' });
+    }
+
+    const like = await prisma.commentLike.create({
+      data: {
+        userId: userId,
+        commentId: parseInt(commentId)
+      }
+    });
+
+    const likesCount = await prisma.commentLike.count({
+      where: { commentId: parseInt(commentId) }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Like agregado al comentario',
+      like,
+      likesCount
+    });
+  } catch (error) {
+    console.error('Error en likeComment:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Quitar like de un comentario
+const unlikeComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.userId;
+
+    const like = await prisma.commentLike.findUnique({
+      where: {
+        userId_commentId: {
+          userId: userId,
+          commentId: parseInt(commentId)
+        }
+      }
+    });
+
+    if (!like) {
+      return res.status(404).json({ error: 'No has dado like a este comentario' });
+    }
+
+    await prisma.commentLike.delete({
+      where: {
+        userId_commentId: {
+          userId: userId,
+          commentId: parseInt(commentId)
+        }
+      }
+    });
+
+    const likesCount = await prisma.commentLike.count({
+      where: { commentId: parseInt(commentId) }
+    });
+
+    res.json({
+      success: true,
+      message: 'Like eliminado del comentario',
+      likesCount
+    });
+  } catch (error) {
+    console.error('Error en unlikeComment:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getCommentsByPost,
   createComment,
-  deleteComment
+  deleteComment,
+  likeComment,
+  unlikeComment
 };
