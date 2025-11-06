@@ -9,10 +9,8 @@ const api = axios.create({
   }
 });
 
-// Interceptor DEBE estar aquí, antes de las funciones
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  console.log('Token enviado:', token); // Debug
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,10 +26,11 @@ export const postsAPI = {
   getAll: () => api.get('/posts'),
   create: (data) => api.post('/posts', data),
   delete: (id) => api.delete(`/posts/${id}`),
-  getByUser: (userId) => api.get(`/users/${userId}/posts`)
+  getByUser: (userId) => api.get(`/users/${userId}/posts`),
+  like: (id) => api.post(`/posts/${id}/like`),
+  unlike: (id) => api.delete(`/posts/${id}/like`)
 };
 
-// Nuevo objeto para usuarios:
 export const usersAPI = {
   getById: (userId) => api.get(`/users/${userId}`)
 };
