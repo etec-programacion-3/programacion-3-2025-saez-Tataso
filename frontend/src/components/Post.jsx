@@ -1,9 +1,16 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { postsAPI } from '../services/api';
 
-function Post({ post, onDelete }) {
+function Post({ post, onDelete, onLikeUpdate }) {
   const { user } = useAuth();
   const isAuthor = user?.id === post.authorId;
+  
+  // Estado local para actualización optimista
+  const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
+  const [likesCount, setLikesCount] = useState(post.likesCount);
+  const [isLoadingLike, setIsLoadingLike] = useState(false);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -27,6 +34,43 @@ function Post({ post, onDelete }) {
     }
   };
 
+  const handleLike = async () => {
+    if (isLoadingLike) return; // Prevenir clicks múltiples
+
+    // ACTUALIZACIÓN OPTIMISTA: Cambiar UI inmediatamente
+    const previousIsLiked = isLiked;
+    const previousLikesCount = likesCount;
+    
+    setIsLiked(!isLiked);
+    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+    setIsLoadingLike(true);
+
+    try {
+      if (isLiked) {
+        // Quitar like
+        await postsAPI.unlike(post.id);
+      } else {
+        // Dar like
+        await postsAPI.like(post.id);
+      }
+      
+      // Notificar al componente padre si existe
+      if (onLikeUpdate) {
+        onLikeUpdate(post.id, !isLiked);
+      }
+    } catch (error) {
+      console.error('Error al dar/quitar like:', error);
+      
+      // ROLLBACK: Revertir cambios si falla
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousLikesCount);
+      
+      alert('Error al procesar el like. Intenta de nuevo.');
+    } finally {
+      setIsLoadingLike(false);
+    }
+  };
+
   return (
     <article style={postCardStyle}>
       <div style={postHeaderStyle}>
@@ -47,7 +91,7 @@ function Post({ post, onDelete }) {
         
         {isAuthor && (
           <button onClick={handleDelete} style={deleteButtonStyle}>
-            <span style={statStyle}>Eliminar</span>
+            🗑️
           </button>
         )}
       </div>
@@ -57,8 +101,24 @@ function Post({ post, onDelete }) {
       </div>
       
       <div style={footerStyle}>
+        <button 
+          onClick={handleLike}
+          style={{
+            ...likeButtonStyle,
+            color: isLiked ? '#e0245e' : '#657786',
+            cursor: isLoadingLike ? 'wait' : 'pointer'
+          }}
+          disabled={isLoadingLike}
+        >
+          <span style={{ fontSize: '1.2rem' }}>
+            {isLiked ? '❤️' : '🤍'}
+          </span>
+          <span style={{ marginLeft: '0.5rem' }}>
+            {likesCount} {likesCount === 1 ? 'me gusta' : 'me gusta'}
+          </span>
+        </button>
+        
         <span style={statStyle}>💬 0 comentarios</span>
-        <span style={statStyle}>❤️ 0 me gusta</span>
       </div>
     </article>
   );
@@ -70,8 +130,7 @@ const postCardStyle = {
   borderRadius: '12px',
   padding: '1.5rem',
   marginBottom: '1rem',
-  transition: 'box-shadow 0.2s',
-  cursor: 'pointer'
+  transition: 'box-shadow 0.2s'
 };
 
 const postHeaderStyle = {
@@ -128,7 +187,21 @@ const footerStyle = {
   display: 'flex',
   gap: '2rem',
   paddingTop: '1rem',
-  borderTop: '1px solid #e1e8ed'
+  borderTop: '1px solid #e1e8ed',
+  alignItems: 'center'
+};
+
+const likeButtonStyle = {
+  background: 'none',
+  border: 'none',
+  fontSize: '0.875rem',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  padding: '0.5rem',
+  borderRadius: '4px',
+  transition: 'background-color 0.2s',
+  fontWeight: '500'
 };
 
 const statStyle = {

@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const createPost = async (req, res) => {
   try {
     const {content } = req.body;
-    const authorId = req.user.userId; // Del middleware de autenticación
+    const authorId = req.user.userId;
 
     const post = await prisma.post.create({
       data: {
@@ -15,13 +15,18 @@ const createPost = async (req, res) => {
       include: {
         author: {
           select: { id: true, name: true, email: true }
-        }
+        },
+        likes: true // Incluir likes
       }
     });
 
     res.status(201).json({
       message: 'Post creado exitosamente',
-      post
+      post: {
+        ...post,
+        likesCount: post.likes.length,
+        isLikedByCurrentUser: false
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -31,28 +36,40 @@ const createPost = async (req, res) => {
 // Obtener todos los posts
 const getAllPosts = async (req, res) => {
   try {
+    const userId = req.user?.userId; // Puede ser undefined si no está autenticado
+
     const posts = await prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         author: {
           select: { id: true, name: true, email: true }
-        }
+        },
+        likes: true
       }
     });
 
-    res.json({ posts });
+    // Agregar información de likes
+    const postsWithLikes = posts.map(post => ({
+      ...post,
+      likesCount: post.likes.length,
+      isLikedByCurrentUser: userId 
+        ? post.likes.some(like => like.userId === userId)
+        : false,
+      likes: undefined // No enviar el array completo de likes al frontend
+    }));
+
+    res.json({ posts: postsWithLikes });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Eliminar un post (solo el autor puede hacerlo)
+// Eliminar un post
 const deletePost = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.userId;
 
-    // Buscar el post
     const post = await prisma.post.findUnique({
       where: { id: parseInt(id) }
     });
@@ -61,12 +78,10 @@ const deletePost = async (req, res) => {
       return res.status(404).json({ error: 'Post no encontrado' });
     }
 
-    // Verificar que el usuario sea el autor
     if (post.authorId !== userId) {
       return res.status(403).json({ error: 'No puedes eliminar un post que no es tuyo' });
     }
 
-    // Eliminar el post
     await prisma.post.delete({
       where: { id: parseInt(id) }
     });
@@ -77,12 +92,12 @@ const deletePost = async (req, res) => {
   }
 };
 
-// Obtener todos los posts de un usuario específico
+// Obtener posts de un usuario específico
 const getPostsByUser = async (req, res) => {
   try {
     const { userId } = req.params;
+    const currentUserId = req.user?.userId;
 
-    // Verificar que el usuario existe
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) }
     });
@@ -91,19 +106,28 @@ const getPostsByUser = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Obtener posts del usuario
     const posts = await prisma.post.findMany({
       where: { authorId: parseInt(userId) },
       orderBy: { createdAt: 'desc' },
       include: {
         author: {
           select: { id: true, name: true, email: true }
-        }
+        },
+        likes: true
       }
     });
 
+    const postsWithLikes = posts.map(post => ({
+      ...post,
+      likesCount: post.likes.length,
+      isLikedByCurrentUser: currentUserId
+        ? post.likes.some(like => like.userId === currentUserId)
+        : false,
+      likes: undefined
+    }));
+
     res.json({ 
-      posts,
+      posts: postsWithLikes,
       count: posts.length 
     });
   } catch (error) {
@@ -111,7 +135,6 @@ const getPostsByUser = async (req, res) => {
   }
 };
 
-// Actualizar el module.exports:
 module.exports = { 
   createPost, 
   getAllPosts, 

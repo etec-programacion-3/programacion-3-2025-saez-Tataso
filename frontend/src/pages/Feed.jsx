@@ -49,6 +49,21 @@ function Feed() {
     );
   }
 
+  if (posts.length === 0) {
+    return (
+      <div style={containerStyle}>
+        <h1 style={titleStyle}>Feed de Publicaciones</h1>
+        
+        <CreatePost onPostCreated={handlePostCreated} />
+        
+        <div style={emptyStateStyle}>
+          <p>📭 No hay publicaciones aún.</p>
+          <p style={emptySubtextStyle}>¡Sé el primero en publicar!</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div style={errorContainerStyle}>
