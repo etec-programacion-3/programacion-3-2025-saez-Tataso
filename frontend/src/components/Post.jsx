@@ -2,15 +2,20 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { postsAPI } from '../services/api';
+import CommentList from './CommentList';
 
 function Post({ post, onDelete, onLikeUpdate }) {
   const { user } = useAuth();
   const isAuthor = user?.id === post.authorId;
   
-  // Estado local para actualización optimista
+  // Estado para likes
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
   const [likesCount, setLikesCount] = useState(post.likesCount);
   const [isLoadingLike, setIsLoadingLike] = useState(false);
+  
+  // Estado para comentarios
+  const [showComments, setShowComments] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(post.commentsCount);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -35,9 +40,8 @@ function Post({ post, onDelete, onLikeUpdate }) {
   };
 
   const handleLike = async () => {
-    if (isLoadingLike) return; // Prevenir clicks múltiples
+    if (isLoadingLike) return;
 
-    // ACTUALIZACIÓN OPTIMISTA: Cambiar UI inmediatamente
     const previousIsLiked = isLiked;
     const previousLikesCount = likesCount;
     
@@ -47,28 +51,26 @@ function Post({ post, onDelete, onLikeUpdate }) {
 
     try {
       if (isLiked) {
-        // Quitar like
         await postsAPI.unlike(post.id);
       } else {
-        // Dar like
         await postsAPI.like(post.id);
       }
       
-      // Notificar al componente padre si existe
       if (onLikeUpdate) {
         onLikeUpdate(post.id, !isLiked);
       }
     } catch (error) {
       console.error('Error al dar/quitar like:', error);
-      
-      // ROLLBACK: Revertir cambios si falla
       setIsLiked(previousIsLiked);
       setLikesCount(previousLikesCount);
-      
       alert('Error al procesar el like. Intenta de nuevo.');
     } finally {
       setIsLoadingLike(false);
     }
+  };
+
+  const toggleComments = () => {
+    setShowComments(!showComments);
   };
 
   return (
@@ -104,9 +106,8 @@ function Post({ post, onDelete, onLikeUpdate }) {
         <button 
           onClick={handleLike}
           style={{
-            ...likeButtonStyle,
-            color: isLiked ? '#e0245e' : '#657786',
-            cursor: isLoadingLike ? 'wait' : 'pointer'
+            ...actionButtonStyle,
+            color: isLiked ? '#e0245e' : '#657786'
           }}
           disabled={isLoadingLike}
         >
@@ -114,12 +115,31 @@ function Post({ post, onDelete, onLikeUpdate }) {
             {isLiked ? '❤️' : '🤍'}
           </span>
           <span style={{ marginLeft: '0.5rem' }}>
-            {likesCount} {likesCount === 1 ? 'me gusta' : 'me gusta'}
+            {likesCount}
           </span>
         </button>
         
-        <span style={statStyle}>💬 0 comentarios</span>
+        <button 
+          onClick={toggleComments}
+          style={{
+            ...actionButtonStyle,
+            color: showComments ? '#1da1f2' : '#657786'
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>💬</span>
+          <span style={{ marginLeft: '0.5rem' }}>
+            {commentsCount}
+          </span>
+        </button>
       </div>
+
+      {showComments && (
+        <CommentList 
+          postId={post.id}
+          initialCount={commentsCount}
+          onCountChange={setCommentsCount}
+        />
+      )}
     </article>
   );
 }
@@ -191,7 +211,7 @@ const footerStyle = {
   alignItems: 'center'
 };
 
-const likeButtonStyle = {
+const actionButtonStyle = {
   background: 'none',
   border: 'none',
   fontSize: '0.875rem',
@@ -202,11 +222,6 @@ const likeButtonStyle = {
   borderRadius: '4px',
   transition: 'background-color 0.2s',
   fontWeight: '500'
-};
-
-const statStyle = {
-  fontSize: '0.875rem',
-  color: '#657786'
 };
 
 const deleteButtonStyle = {

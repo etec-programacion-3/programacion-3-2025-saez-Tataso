@@ -31,6 +31,12 @@ export const postsAPI = {
   unlike: (id) => api.delete(`/posts/${id}/like`)
 };
 
+export const commentsAPI = {
+  getByPost: (postId) => api.get(`/posts/${postId}/comments`),
+  create: (postId, data) => api.post(`/posts/${postId}/comments`, data),
+  delete: (commentId) => api.delete(`/posts/comments/${commentId}`)
+};
+
 export const usersAPI = {
   getById: (userId) => api.get(`/users/${userId}`)
 };
