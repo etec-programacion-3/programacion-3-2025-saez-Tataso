@@ -16,7 +16,8 @@ const createPost = async (req, res) => {
         author: {
           select: { id: true, name: true, email: true }
         },
-        likes: true // Incluir likes
+        likes: true,
+        comments: true
       }
     });
 
@@ -25,7 +26,10 @@ const createPost = async (req, res) => {
       post: {
         ...post,
         likesCount: post.likes.length,
-        isLikedByCurrentUser: false
+        commentsCount: post.comments.length,
+        isLikedByCurrentUser: false,
+        likes: undefined,
+        comments: undefined
       }
     });
   } catch (error) {
@@ -36,7 +40,7 @@ const createPost = async (req, res) => {
 // Obtener todos los posts
 const getAllPosts = async (req, res) => {
   try {
-    const userId = req.user?.userId; // Puede ser undefined si no está autenticado
+    const userId = req.user?.userId;
 
     const posts = await prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
@@ -44,21 +48,23 @@ const getAllPosts = async (req, res) => {
         author: {
           select: { id: true, name: true, email: true }
         },
-        likes: true
+        likes: true,
+        comments: true
       }
     });
 
-    // Agregar información de likes
-    const postsWithLikes = posts.map(post => ({
+    const postsWithMetadata = posts.map(post => ({
       ...post,
       likesCount: post.likes.length,
+      commentsCount: post.comments.length,
       isLikedByCurrentUser: userId 
         ? post.likes.some(like => like.userId === userId)
         : false,
-      likes: undefined // No enviar el array completo de likes al frontend
+      likes: undefined,
+      comments: undefined
     }));
 
-    res.json({ posts: postsWithLikes });
+    res.json({ posts: postsWithMetadata });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -113,21 +119,24 @@ const getPostsByUser = async (req, res) => {
         author: {
           select: { id: true, name: true, email: true }
         },
-        likes: true
+        likes: true,
+        comments: true
       }
     });
 
-    const postsWithLikes = posts.map(post => ({
+    const postsWithMetadata = posts.map(post => ({
       ...post,
       likesCount: post.likes.length,
+      commentsCount: post.comments.length,
       isLikedByCurrentUser: currentUserId
         ? post.likes.some(like => like.userId === currentUserId)
         : false,
-      likes: undefined
+      likes: undefined,
+      comments: undefined
     }));
 
     res.json({ 
-      posts: postsWithLikes,
+      posts: postsWithMetadata,
       count: posts.length 
     });
   } catch (error) {
