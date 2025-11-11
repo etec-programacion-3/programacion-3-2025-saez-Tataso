@@ -41,7 +41,7 @@ npx prisma generate
 
 ### 3. Configure Environment
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (Or just rename ".env.example" like just ".env"):
 ```env
 DATABASE_URL="postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public"
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
