@@ -1,152 +1,31 @@
-# programacion-3-2025-saez-Tataso
-# Twitter Clone - Full Stack Application
+# Social Media Application
 
-A complete social media application built with modern web technologies, featuring user authentication, post management, and real-time interactions.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Technology Stack](#technology-stack)
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Overview
-
-This project is a Twitter-like social media platform that demonstrates full-stack development practices including RESTful API design, secure authentication, database relationships, and modern frontend architecture.
-
-## Technology Stack
-
-### Backend
-- **Runtime**: Node.js (v18+)
-- **Framework**: Express.js
-- **Database**: PostgreSQL (v13+)
-- **ORM**: Prisma
-- **Authentication**: JSON Web Tokens (JWT)
-- **Password Hashing**: bcrypt
-- **Security**: Helmet, CORS
-
-### Frontend
-- **Library**: React 18
-- **Build Tool**: Vite
-- **Routing**: React Router DOM
-- **HTTP Client**: Axios
-- **State Management**: Context API
-- **Styling**: CSS-in-JS (inline styles)
-
-## Features
-
-- User registration with email domain validation (@etec.um.edu.ar)
-- Secure authentication with JWT tokens
-- Password hashing with bcrypt
-- Create, read, and delete posts
-- User authorization (only post authors can delete their posts)
-- Protected routes on frontend
-- Real-time token expiration handling
-- Responsive user interface
-- Loading states and error handling
-- RESTful API architecture
+A full-stack social media application featuring user authentication and post management built with React, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Prerequisites
 
-Before installing, ensure you have the following installed on your system:
+The following software must be installed on your system:
+- Docker & Docker Compose
+- Node.js v18 or higher
+- npm (included with Node.js)
 
-- **Node.js** >= 18.0.0
-- **npm** >= 9.0.0
-- **PostgreSQL** >= 13.0
-- **Git**
-- **make** (for using Makefile commands)
+No additional system-level packages are required. All other dependencies are installed via npm.
 
-### Installing Prerequisites on Arch Linux (FRESH INSTALL)
+## Quick Start
 
+### 1. Start the Database
+
+From the project root directory:
 ```bash
-# Update system
-sudo pacman -Syyu
-
-# Install all required packages
-sudo pacman -S nodejs npm postgresql git make base-devel lsof tmux
-
-# Enable and start PostgreSQL service
-sudo systemctl enable postgresql
-sudo systemctl start postgresql
-
-# Initialize PostgreSQL (ONLY if it's your first time)
-sudo -u postgres initdb -D /var/lib/postgres/data
-
-# Start PostgreSQL after initialization
-sudo systemctl start postgresql
+docker-compose up -d
 ```
 
-### Installing Prerequisites on Ubuntu/Debian
-
+Verify the container is running:
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs postgresql postgresql-contrib git make lsof tmux
-sudo systemctl enable postgresql
-sudo systemctl start postgresql
+docker ps
 ```
 
-## Installation
-
-### Quick Start for Arch Linux
-
-```bash
-# 1. Clone repository
-git clone https://github.com/etec-programacion-3/programacion-3-2025-saez-Tataso.git
-cd programacion-3-2025-saez-Tataso
-
-# 2. Ensure PostgreSQL is running
-sudo systemctl status postgresql
-# If not running:
-sudo systemctl start postgresql
-
-# 3. Install all dependencies
-make install
-
-# 4. Create .env file
-make env-create
-
-# 5. Setup database
-make setup-db
-
-# 6. Run migrations
-make migrate
-
-# 7. Start application
-make dev
-```
-
-### Step by Step Installation (Arch Linux)
-
-If you prefer to understand each step or if Makefile doesn't work:
-
-#### 1. System Setup
-```bash
-# Ensure PostgreSQL is installed and running
-sudo pacman -S postgresql
-sudo systemctl enable postgresql
-sudo systemctl start postgresql
-```
-
-#### 2. Initialize PostgreSQL (ONLY on first install)
-```bash
-# Check if PostgreSQL data directory exists
-if [ ! -d "/var/lib/postgres/data" ]; then
-    sudo -u postgres initdb -D /var/lib/postgres/data
-fi
-sudo systemctl restart postgresql
-```
-
-#### 3. Install Node.js dependencies
+### 2. Install Dependencies
 ```bash
 # Install backend dependencies
 npm install
@@ -156,117 +35,38 @@ cd frontend
 npm install
 cd ..
 
-# Generate Prisma client
+# Generate Prisma Client
 npx prisma generate
 ```
 
-#### 4. Setup PostgreSQL database
-```bash
-# Access PostgreSQL as postgres user
-sudo -u postgres psql
-```
+### 3. Configure Environment
 
-In PostgreSQL prompt:
-```sql
--- Create database
-CREATE DATABASE mi_proyecto;
-
--- Create user with password
-CREATE USER admin WITH PASSWORD 'admin';
-
--- Grant all privileges
-GRANT ALL PRIVILEGES ON DATABASE mi_proyecto TO admin;
-
--- Allow user to create databases (for testing)
-ALTER USER admin CREATEDB;
-
--- Exit
-\q
-```
-
-#### 5. Configure environment
 Create a `.env` file in the project root:
-```bash
+```env
 DATABASE_URL="postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public"
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 PORT=3000
 NODE_ENV=development
 ```
 
-#### 6. Run migrations
+### 4. Run Database Migrations
 ```bash
 npx prisma migrate deploy
 ```
 
-## Configuration
-
-### Environment Variables
-
-The `.env` file should contain:
-
+Or use the Makefile:
 ```bash
-DATABASE_URL="postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public"
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-PORT=3000
-NODE_ENV=development
+make migrate
 ```
 
-**Important notes:**
-- The default password is 'admin' for development. Change it in production!
-- Change `JWT_SECRET` to a strong, random string in production
-- Never commit `.env` file to version control
+### 5. Start the Application
 
-### PostgreSQL Configuration for Arch Linux
-
-If you have authentication issues, you may need to edit PostgreSQL configuration:
-
+Option A - Using Makefile (requires tmux):
 ```bash
-# Edit pg_hba.conf
-sudo nano /var/lib/postgres/data/pg_hba.conf
-
-# Ensure these lines exist:
-# TYPE  DATABASE        USER            ADDRESS                 METHOD
-local   all             all                                     trust
-host    all             all             127.0.0.1/32            md5
-host    all             all             ::1/128                 md5
-
-# Restart PostgreSQL after changes
-sudo systemctl restart postgresql
-```
-
-### Database Schema
-
-The application uses Prisma for database management. The schema includes:
-
-**Users Table:**
-- id (Integer, Primary Key)
-- email (String, Unique)
-- name (String)
-- password (String, Hashed)
-- createdAt (DateTime)
-
-**Posts Table:**
-- id (Integer, Primary Key)
-- content (String)
-- createdAt (DateTime)
-- updatedAt (DateTime)
-- authorId (Integer, Foreign Key to Users)
-
-## Running the Application
-
-### Using Makefile (Recommended)
-
-```bash
-# Start both backend and frontend (requires tmux)
 make dev
-
-# Or start separately in different terminals
-make dev-backend  # Terminal 1
-make dev-frontend # Terminal 2
 ```
 
-### Manual Start
-
+Option B - Manual start in separate terminals:
 ```bash
 # Terminal 1 - Backend
 npm run dev
@@ -276,18 +76,75 @@ cd frontend
 npm run dev
 ```
 
-### Access Points
+The application will be available at:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3000
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3000
-- **API Health Check**: http://localhost:3000/health
-- **Prisma Studio**: http://localhost:5555 (run `make db-studio`)
+## Project Structure
+```
+.
+├── src/                          # Backend source code
+│   ├── controllers/              # Request handlers
+│   │   ├── authController.js     # Authentication logic
+│   │   ├── userController.js     # User management
+│   │   └── postController.js     # Post management
+│   ├── routes/                   # API route definitions
+│   │   ├── authRoutes.js         # /api/auth routes
+│   │   ├── userRoutes.js         # /api/users routes
+│   │   └── postRoutes.js         # /api/posts routes
+│   ├── middleware/               # Custom middleware
+│   │   └── auth.js               # JWT verification
+│   └── index.js                  # Express server entry point
+├── prisma/
+│   ├── schema.prisma             # Database schema
+│   └── migrations/               # Migration history
+├── frontend/                     # Frontend application
+│   ├── src/
+│   │   ├── components/           # React components
+│   │   ├── pages/                # Page components
+│   │   ├── context/              # React Context (Auth)
+│   │   ├── services/             # API integration (axios)
+│   │   ├── App.jsx               # Main application component
+│   │   └── main.jsx              # Application entry point
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
+├── docker-compose.yml            # PostgreSQL container configuration
+├── requests.http                 # API endpoint examples
+├── Dependencies.txt              # Minimal dependencies documentation
+├── Makefile                      # Build automation commands
+├── package.json                  # Backend dependencies
+├── .env                          # Environment variables (not in git)
+├── .env.example                  # Environment template
+└── README.md
+```
 
-## API Documentation
+## Technology Stack
 
-### Authentication Endpoints
+### Backend
+- Node.js & Express - Web server and RESTful API
+- Prisma ORM - Database management and migrations
+- PostgreSQL - Relational database
+- JWT (jsonwebtoken) - Authentication tokens
+- bcryptjs - Password hashing
+- CORS - Cross-origin resource sharing
 
-#### Register User
+### Frontend
+- React 18 - UI library
+- React Router DOM - Client-side routing
+- Axios - HTTP client for API requests
+- Vite - Build tool and development server
+- Context API - State management
+
+### Infrastructure
+- Docker - Container platform for PostgreSQL
+- Docker Compose - Database orchestration
+
+## API Endpoints
+
+### Authentication
+
+**Register User**
 ```http
 POST /api/auth/register
 Content-Type: application/json
@@ -295,42 +152,29 @@ Content-Type: application/json
 {
   "name": "John Doe",
   "email": "john@etec.um.edu.ar",
-  "password": "securePassword123"
+  "password": "password123"
 }
 ```
 
-Response:
-```json
-{
-  "message": "Usuario registrado exitosamente",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": 1,
-    "email": "john@etec.um.edu.ar",
-    "name": "John Doe"
-  }
-}
-```
-
-#### Login
+**Login**
 ```http
 POST /api/auth/login
 Content-Type: application/json
 
 {
   "email": "john@etec.um.edu.ar",
-  "password": "securePassword123"
+  "password": "password123"
 }
 ```
 
-### Posts Endpoints
+### Posts
 
-#### Get All Posts
+**Get All Posts**
 ```http
 GET /api/posts
 ```
 
-#### Create Post (Protected)
+**Create Post** (requires authentication)
 ```http
 POST /api/posts
 Authorization: Bearer <token>
@@ -341,247 +185,150 @@ Content-Type: application/json
 }
 ```
 
-#### Delete Post (Protected)
+**Delete Post** (requires authentication, author only)
 ```http
 DELETE /api/posts/:id
 Authorization: Bearer <token>
 ```
 
-### Users Endpoints
+### Users
 
-#### Get All Users (Protected)
+**Get All Users**
 ```http
 GET /api/users
-Authorization: Bearer <token>
 ```
 
-## Project Structure
+**Create User**
+```http
+POST /api/users
+Content-Type: application/json
 
-```
-.
-├── src/                          # Backend source code
-│   ├── controllers/              # Request handlers
-│   │   ├── authController.js     # Authentication logic
-│   │   ├── userController.js     # User management
-│   │   └── postController.js     # Post management
-│   ├── routes/                   # API route definitions
-│   │   ├── authRoutes.js
-│   │   ├── userRoutes.js
-│   │   └── postRoutes.js
-│   ├── middleware/               # Custom middleware
-│   │   └── auth.js               # JWT verification
-│   └── index.js                  # Application entry point
-├── prisma/
-│   ├── schema.prisma             # Database schema
-│   └── migrations/               # Migration history
-├── frontend/                     # Frontend application
-│   ├── src/
-│   │   ├── components/          # Reusable components
-│   │   ├── pages/               # Route components
-│   │   ├── layouts/             # Layout components
-│   │   ├── context/             # React Context
-│   │   ├── services/            # API integration
-│   │   ├── App.jsx              # Root component
-│   │   ├── main.jsx             # Application entry
-│   │   └── index.css            # Global styles
-│   ├── public/                  # Static assets
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-├── Makefile                     # Build automation
-├── package.json                 # Backend dependencies
-├── .env                         # Environment variables (not in repo)
-├── .env.example                 # Environment template
-├── .gitignore
-└── README.md
+{
+  "name": "Jane Doe",
+  "email": "jane@etec.um.edu.ar",
+  "password": "password123"
+}
 ```
 
-## Development
+## Database Schema
 
-### Available Make Commands
+### User Model
+- id (Int, Primary Key, Auto-increment)
+- email (String, Unique)
+- name (String)
+- password (String, Hashed with bcrypt)
+- createdAt (DateTime)
+- posts (Relation to Post[])
 
+### Post Model
+- id (Int, Primary Key, Auto-increment)
+- content (String)
+- createdAt (DateTime)
+- updatedAt (DateTime)
+- authorId (Int, Foreign Key to User)
+- author (Relation to User)
+
+## Available Make Commands
 ```bash
-make help           # Show all available commands
-make install        # Install all dependencies
-make setup-db       # Setup PostgreSQL database
-make migrate        # Run database migrations
-make dev            # Start development servers
-make build          # Build for production
-make clean          # Remove node_modules and build artifacts
-make test-api       # Test API health endpoint
-make status         # Show service status
-make check-ports    # Check port availability
-make kill-ports     # Kill processes on used ports
-make db-studio      # Open Prisma Studio
-make backup-db      # Backup database
-make version        # Show installed versions
-make env-create     # Create .env file from template
+make help            # Show all available commands
+make install         # Install all dependencies
+make migrate         # Run database migrations
+make db-studio       # Open Prisma Studio
+make db-reset        # Reset database (WARNING: deletes all data)
+make dev             # Start both backend and frontend (requires tmux)
+make dev-backend     # Start only backend
+make dev-frontend    # Start only frontend
+make status          # Show service status
+make check-ports     # Check if ports are in use
+make clean           # Clean node_modules and build artifacts
 ```
 
-### Database Management
+## Testing the API
 
+Use the included `requests.http` file with VS Code's REST Client extension, or use curl:
 ```bash
-# Create new migration
-make migrate-dev
+# Register a user
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","email":"test@etec.um.edu.ar","password":"123456"}'
 
-# Reset database (WARNING: deletes all data)
-make db-reset
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@etec.um.edu.ar","password":"123456"}'
 
-# Push schema changes without migration
-make db-push
-
-# Open Prisma Studio GUI
-make db-studio
-
-# Backup database
-make backup-db
+# Get all posts
+curl http://localhost:3000/api/posts
 ```
-
-### Code Quality
-
-The project follows these conventions:
-- RESTful API design patterns
-- Separation of concerns (MVC architecture)
-- Reusable React components
-- Centralized state management
-- Error handling at all levels
-- Secure authentication practices
-
-## Deployment
-
-### Production Build
-
-```bash
-# Build frontend
-make build
-
-# Start backend in production mode
-make start
-```
-
-### Environment Variables for Production
-
-Update `.env` for production:
-```bash
-DATABASE_URL="postgresql://user:pass@production-host:5432/db"
-JWT_SECRET="strong-random-production-secret"
-PORT=3000
-NODE_ENV=production
-```
-
-### Security Considerations
-
-- Change JWT_SECRET to a strong random string
-- Use environment variables for sensitive data
-- Enable HTTPS in production
-- Set appropriate CORS origins
-- Use strong database passwords
-- Implement rate limiting
-- Regular security updates
 
 ## Troubleshooting
 
-### PostgreSQL Not Starting (Arch Linux)
-
-```bash
-# Check if data directory exists
-ls -la /var/lib/postgres/data
-
-# If empty, initialize database
-sudo -u postgres initdb -D /var/lib/postgres/data
-
-# Start and enable service
-sudo systemctl enable postgresql
-sudo systemctl start postgresql
-
-# Check status
-sudo systemctl status postgresql
-```
-
-### Permission Denied Errors
-
-```bash
-# Fix PostgreSQL permissions
-sudo chown -R postgres:postgres /var/lib/postgres
-sudo chmod 700 /var/lib/postgres/data
-
-# Restart service
-sudo systemctl restart postgresql
-```
-
-### Port Already in Use
-
-```bash
-# Check which process is using the port
-make check-ports
-
-# Kill processes on ports
-make kill-ports
-```
-
 ### Database Connection Issues
 
+Verify Docker is running:
 ```bash
-# Check PostgreSQL status
-sudo systemctl status postgresql
-
-# Restart PostgreSQL
-sudo systemctl restart postgresql
-
-# Test database connection
-psql -h localhost -U admin -d mi_proyecto
-
-# If authentication fails, check pg_hba.conf
-sudo nano /var/lib/postgres/data/pg_hba.conf
+docker ps
 ```
 
-### Cannot Find Module
+Check the DATABASE_URL in `.env`:
+```
+postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public
+```
 
+### Port 5432 Already in Use
+
+Modify the port mapping in `docker-compose.yml`:
+```yaml
+ports:
+  - "5433:5432"
+```
+
+Update DATABASE_URL:
+```
+postgresql://admin:admin@localhost:5433/mi_proyecto?schema=public
+```
+
+### Reset Database Completely
 ```bash
-# Clean and reinstall
-make clean
-make install
+docker-compose down -v
+docker-compose up -d
+npx prisma migrate reset
+```
+
+Or use Makefile:
+```bash
+make db-reset
 ```
 
 ### Prisma Client Not Generated
-
 ```bash
-# Regenerate Prisma client
 npx prisma generate
 ```
 
-### Token Expiration Issues
-
-Tokens expire after 24 hours. Users will be automatically logged out when their token expires. To adjust expiration time, modify `expiresIn` in `src/controllers/authController.js`.
-
-### CORS Errors
-
-Ensure backend CORS is configured correctly in `src/index.js`:
-```javascript
-app.use(cors({
-  origin: 'http://localhost:5173'
-}));
-```
-
-### tmux Not Found
-
+Or use Makefile:
 ```bash
-# Install tmux for parallel development
-sudo pacman -S tmux
-
-# Or run backend and frontend separately
-make dev-backend  # Terminal 1
-make dev-frontend # Terminal 2
+make setup-prisma
 ```
 
-## Contributing
+## Development Notes
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This application implements:
+- RESTful API design principles
+- JWT-based authentication with Bearer tokens
+- Password hashing with bcryptjs
+- Protected routes requiring authentication
+- Database relationships using Prisma ORM
+- Authorization checks (users can only delete their own posts)
+- CORS configuration for frontend-backend communication
+- React Context API for authentication state management
 
-## License
+## Educational Context
 
-This project is for educational purposes as part of Programación 3 course at ETEC.
+This project was developed as part of a full-stack web development course, demonstrating:
+- Modern web development practices
+- RESTful API design
+- Database relationship modeling with Prisma
+- Authentication and authorization
+- React hooks and Context API
+- Docker containerization
+- Database migrations
