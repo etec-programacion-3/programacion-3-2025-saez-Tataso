@@ -1,0 +1,70 @@
+### Variables
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+
+### ============================================
+### HEALTH CHECK
+### ============================================
+
+### Check if server is running
+GET {{baseUrl}}/
+
+### ============================================
+### AUTHENTICATION
+### ============================================
+
+### Register new user
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "test@alumno.etec.um.edu.ar",
+  "password": "password123"
+}
+
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@alumno.etec.um.edu.ar",
+  "password": "password123"
+}
+
+### ============================================
+### POSTS
+### ============================================
+
+### Get all posts (public)
+GET {{baseUrl}}/api/posts
+
+### Create new post (requires authentication)
+POST {{baseUrl}}/api/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "This is my first post!"
+}
+
+### Delete post (requires authentication - only author can delete)
+DELETE {{baseUrl}}/api/posts/1
+Authorization: Bearer {{token}}
+
+### ============================================
+### USERS
+### ============================================
+
+### Get all users
+GET {{baseUrl}}/api/users
+
+### Create user (alternative to register)
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "name": "Another User",
+  "email": "another@etec.um.edu.ar",
+  "password": "password123"
+}

@@ -1,0 +1,41 @@
+MINIMAL DEPENDENCIES REQUIRED
+==============================
+
+SYSTEM REQUIREMENTS (must be installed on the operating system):
+-----------------------------------------------------------------
+1. Docker & Docker Compose
+   - Required to run the PostgreSQL database
+   - Without this, there is NO database
+
+2. Node.js v18+ & npm
+   - Required to run backend and frontend
+   - Verify with: node --version && npm --version
+
+
+NOTHING ELSE NEEDS TO BE INSTALLED ON THE OPERATING SYSTEM
+
+
+NPM PACKAGES (installed automatically via npm install):
+-------------------------------------------------------
+Backend (package.json in project root):
+- express: Web framework
+- @prisma/client: Prisma ORM client
+- bcryptjs: Password hashing
+- jsonwebtoken: JWT authentication
+- cors: CORS handling
+- dotenv: Environment variables
+- body-parser: Request body parsing
+- cookie-parser: Cookie parsing
+- morgan: HTTP request logger
+
+Frontend (frontend/package.json):
+- react: UI library
+- react-dom: React DOM renderer
+- react-router-dom: Client-side routing
+- axios: HTTP client
+
+
+SUMMARY:
+--------
+System installations: 2 (Docker + Node.js)
+Everything else installs via: npm install
