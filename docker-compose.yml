@@ -1,23 +1,82 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
-    container_name: social_media_db
+    image: postgres:14-alpine
+    container_name: twitter_clone_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: mi_proyecto
+      POSTGRES_DB: twitter_clone
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - twitter_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d mi_proyecto"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d twitter_clone"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: twitter_clone_backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://admin:admin@postgres:5432/twitter_clone?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      PORT: 3000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - twitter_network
+    volumes:
+      # Para desarrollo, si necesitas hot-reload
+      - ./src:/app/src:ro
+      - ./prisma:/app/prisma:ro
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        echo 'Running migrations...' &&
+        npx prisma migrate deploy || npx prisma db push &&
+        echo 'Starting server...' &&
+        npm start
+      "
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3000
+    container_name: twitter_clone_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"  # Cambia a 8080:80 si el 80 está ocupado
+    depends_on:
+      - backend
+    networks:
+      - twitter_network
+
 volumes:
   postgres_data:
+    driver: local
+
+networks:
+  twitter_network:
+    driver: bridge
