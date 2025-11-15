@@ -10,6 +10,10 @@ RUN npx prisma generate
 
 COPY . .
 
+# Dar permisos de ejecución al script
+RUN chmod +x start.sh
+
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
+# Usar el script de inicio
+CMD ["./start.sh"]
