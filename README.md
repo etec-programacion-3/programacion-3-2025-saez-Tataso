@@ -1,88 +1,241 @@
 # Twitter Clone
 
-Aplicación estilo Twitter con React, Node.js, Express y PostgreSQL.
+A Twitter-like social media application built with React, Node.js, Express, and PostgreSQL.
 
-## Requisitos
+## Prerequisites
 
-- **Docker** y **Docker Compose**
+**You only need:**
+- Docker
+- Docker Compose
 
-## Instalación (Arch Linux)
+That's it. Everything runs in containers.
+
+## Installation (Arch Linux)
+
+### Install Docker
 ```bash
-# Instalar Docker
+# Install Docker and Docker Compose
 sudo pacman -S docker docker-compose
 
-# Iniciar servicio Docker
+# Start and enable Docker service
 sudo systemctl start docker
 sudo systemctl enable docker
 
-# Agregar usuario al grupo docker (para no usar sudo)
+# Add your user to docker group (to avoid using sudo)
 sudo usermod -aG docker $USER
 ```
 
-**Importante:** Después de agregar tu usuario al grupo docker, cierra sesión y vuelve a iniciar para que los cambios surtan efecto.
+**IMPORTANT:** After running `usermod`, **log out and log back in** for changes to take effect.
 
-## Uso
+### Verify Installation
 ```bash
-# 1. Clonar repositorio
+# Check Docker works without sudo
+docker --version
+docker-compose --version
+```
+
+If it works without `sudo`, you're ready!
+
+---
+
+## Usage
+```bash
+# 1. Clone repository
 git clone https://github.com/etec-programacion-3/programacion-3-2025-saez-Tataso.git
 cd programacion-3-2025-saez-Tataso
 
-# 2. Iniciar aplicación
+# 2. Start application (this does EVERYTHING automatically)
 docker-compose up -d
 
-# 3. Ver logs (opcional)
-docker-compose logs -f
+# 3. Wait ~30 seconds on first run (downloads images and builds)
 ```
 
-**¡Listo!** Abre tu navegador en:
-- **Frontend:** http://localhost
+**Done!** Open your browser:
+- **Application:** http://localhost
 - **API:** http://localhost:3000
 
-## Comandos útiles
+---
+
+## Using the Application
+
+1. Register with an email ending in `@etec.um.edu.ar`
+   - Example: `student@etec.um.edu.ar`
+2. Log in
+3. Create posts, comment, like
+
+---
+
+## Useful Commands
 ```bash
-# Detener todo
-docker-compose down
+# View logs in real-time
+docker-compose logs -f
 
-# Detener y eliminar volúmenes (reinicio completo)
-docker-compose down -v
+# View only backend logs
+docker-compose logs -f backend
 
-# Reconstruir contenedores
-docker-compose up -d --build
-
-# Ver estado
+# Check container status
 docker-compose ps
 
-# Ver logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f postgres
+# Stop everything
+docker-compose down
+
+# Complete restart (deletes database)
+docker-compose down -v
+docker-compose up -d --build
+
+# Rebuild without deleting data
+docker-compose up -d --build
 ```
 
-## Registro de usuarios
-
-- Los emails deben terminar en `@etec.um.edu.ar`
-- Ejemplo: `usuario@etec.um.edu.ar`
+---
 
 ## Troubleshooting
 
-**Si el puerto 5432 está ocupado:**
+### Error: Port 5432 already in use
+
+If you have PostgreSQL installed locally:
 ```bash
-# Detener PostgreSQL local
+# Stop local PostgreSQL
 sudo systemctl stop postgresql
+
+# Restart containers
+docker-compose restart
 ```
 
-**Si hay problemas con permisos de Docker:**
+### Error: Permission denied when running docker
 ```bash
-# Verificar que estás en el grupo docker
+# Check if you're in docker group
 groups
 
-# Si no aparece 'docker', ejecutar:
+# If 'docker' doesn't appear:
 sudo usermod -aG docker $USER
-# Luego cerrar sesión y volver a iniciar
+# Then LOG OUT AND LOG BACK IN
 ```
 
-**Reinicio completo:**
+### Error: Cannot connect to Docker daemon
 ```bash
-docker-compose down -v
-docker-compose up -d --build
+# Start Docker service
+sudo systemctl start docker
+
+# Check status
+sudo systemctl status docker
 ```
+
+---
+
+## Testing the API
+
+You can use the included `requests.http` file with VSCode REST Client extension:
+```http
+### Register
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "test@etec.um.edu.ar",
+  "password": "password123"
+}
+
+### Login
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@etec.um.edu.ar",
+  "password": "password123"
+}
+```
+
+---
+
+## Project Structure
+```
+.
+├── docker-compose.yml       # Docker configuration
+├── Dockerfile.backend       # Backend image
+├── start.sh                 # Backend startup script
+├── src/                     # Backend code
+│   ├── index.js            # Server entry point
+│   ├── routes/             # API routes
+│   ├── controllers/        # Business logic
+│   └── middleware/         # Authentication
+├── prisma/                 # Database schema & migrations
+│   ├── schema.prisma
+│   └── migrations/
+└── frontend/
+    ├── Dockerfile          # Frontend image
+    ├── src/                # React application
+    │   ├── main.jsx
+    │   ├── App.jsx
+    │   ├── pages/
+    │   ├── components/
+    │   └── context/
+    └── public/
+```
+
+---
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+
+### Posts
+- `GET /api/posts` - Get all posts
+- `POST /api/posts` - Create post (requires auth)
+- `DELETE /api/posts/:id` - Delete post (requires auth)
+
+### Users
+- `GET /api/users` - Get all users
+
+---
+
+## Security Notes
+
+- Default credentials are for development only
+- Change `JWT_SECRET` in production
+- Use strong passwords
+- Email validation requires `@etec.um.edu.ar` domain
+
+---
+
+## Local Development (Optional)
+
+If you want to develop without Docker:
+```bash
+# Stop Docker containers
+docker-compose down
+
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
+
+# Setup local PostgreSQL
+sudo systemctl start postgresql
+sudo -u postgres psql -c "CREATE DATABASE mi_proyecto;"
+sudo -u postgres psql -c "CREATE USER admin WITH PASSWORD 'admin';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE mi_proyecto TO admin;"
+
+# Create .env file
+echo 'DATABASE_URL="postgresql://admin:admin@localhost:5432/mi_proyecto?schema=public"' > .env
+echo 'JWT_SECRET="your-secret-key"' >> .env
+echo 'PORT=3000' >> .env
+
+# Run migrations
+npx prisma migrate deploy
+
+# Start backend (terminal 1)
+npm run dev
+
+# Start frontend (terminal 2)
+cd frontend && npm run dev
+```
+---
+
+## 👨Author
+
+Teobaldo Saez
+
+---
