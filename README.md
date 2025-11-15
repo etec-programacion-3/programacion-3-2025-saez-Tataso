@@ -1,67 +1,88 @@
-# Twitter Clone - Full Stack Application
+# Twitter Clone
 
-## 🚀 Quick Start con Docker
+Aplicación estilo Twitter con React, Node.js, Express y PostgreSQL.
 
-# INSTALACIÓN EN ARCH LINUX
+## Requisitos
 
+- **Docker** y **Docker Compose**
 
+## Instalación (Arch Linux)
+```bash
+# Instalar Docker
+sudo pacman -S docker docker-compose
 
-## 1. Clonar repo
+# Iniciar servicio Docker
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Agregar usuario al grupo docker (para no usar sudo)
+sudo usermod -aG docker $USER
+```
+
+**Importante:** Después de agregar tu usuario al grupo docker, cierra sesión y vuelve a iniciar para que los cambios surtan efecto.
+
+## Uso
+```bash
+# 1. Clonar repositorio
 git clone https://github.com/etec-programacion-3/programacion-3-2025-saez-Tataso.git
 cd programacion-3-2025-saez-Tataso
 
-## 2. Instalar Docker (si no lo tiene)
+# 2. Iniciar aplicación
+docker-compose up -d
 
+# 3. Ver logs (opcional)
+docker-compose logs -f
+```
+
+**¡Listo!** Abre tu navegador en:
+- **Frontend:** http://localhost
+- **API:** http://localhost:3000
+
+## Comandos útiles
 ```bash
-sudo pacman -S docker docker-compose
-sudo systemctl enable docker
-sudo systemctl start docker
+# Detener todo
+docker-compose down
+
+# Detener y eliminar volúmenes (reinicio completo)
+docker-compose down -v
+
+# Reconstruir contenedores
+docker-compose up -d --build
+
+# Ver estado
+docker-compose ps
+
+# Ver logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f postgres
+```
+
+## Registro de usuarios
+
+- Los emails deben terminar en `@etec.um.edu.ar`
+- Ejemplo: `usuario@etec.um.edu.ar`
+
+## Troubleshooting
+
+**Si el puerto 5432 está ocupado:**
+```bash
+# Detener PostgreSQL local
+sudo systemctl stop postgresql
+```
+
+**Si hay problemas con permisos de Docker:**
+```bash
+# Verificar que estás en el grupo docker
+groups
+
+# Si no aparece 'docker', ejecutar:
 sudo usermod -aG docker $USER
-# Cerrar sesión y volver a entrar
+# Luego cerrar sesión y volver a iniciar
 ```
 
-## 3. Ejecutar el proyecto
+**Reinicio completo:**
 ```bash
-chmod +x docker-build.sh
-./docker-build.sh
+docker-compose down -v
+docker-compose up -d --build
 ```
-
-## 4. Si hay problemas con permisos
-```bash
-sudo ./docker-build.sh
-```
-
-## 5. Si el puerto 80 está ocupado
-Editar docker-compose.yml y cambiar:
-- "80:80" por "8080:80"
-Luego acceder a http://localhost:8080
-
-### Acceso
-- **App**: http://localhost
-- **API**: http://localhost:3000
-
-### Comandos útiles
-```bash
-docker-compose logs -f     # Ver logs
-docker-compose down        # Detener
-docker-compose down -v     # Resetear todo
-```
-
-## 📁 Estructura del Proyecto
-```
-.
-├── src/               # Backend (Node.js/Express)
-├── frontend/          # Frontend (React/Vite)
-├── prisma/           # Schema y migraciones
-├── docker-compose.yml # Configuración Docker
-└── docker-build.sh   # Script de instalación
-```
-
-## 🛠️ Stack Tecnológico
-- **Backend**: Node.js, Express, Prisma, JWT
-- **Frontend**: React, Vite, React Router
-- **Database**: PostgreSQL
-- **Deployment**: Docker, Nginx
-
-## 📄 Documentación Completa
-Ver [README-DOCKER.md](./README-DOCKER.md) para más detalles.
